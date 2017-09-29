@@ -1,0 +1,9 @@
+{
+    "name": "sfmtd",
+    "authors": [
+        "majiang"
+    ],
+    "description": "D port of Simd-oriented Fast Mersenne Twister",
+    "copyright": "Copyright (c) 2017, majiang",
+    "license": "Unlicense for D port, original License also applies."
+}
