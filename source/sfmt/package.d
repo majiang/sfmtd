@@ -1,5 +1,6 @@
 module sfmt;
 
+import std.stdio;
 static import sfmt.internal;
 alias recursion = sfmt.internal.recursion!(18, 1, 11, 1, masks);
 import sfmt.internal : func1, func2, idxof, ucent_;
@@ -12,6 +13,7 @@ version (MT19937)
     enum SFMT_N = (SFMT_MEXP >> 7) + 1;
     enum SFMT_N64 = SFMT_N << 1;
     enum SFMT_N32 = SFMT_N << 2;
+    enum SFMT_POS1 = 122;
     enum masks = [0xdfffffefU, 0xddfecb7fU, 0xbffaffffU, 0xbffffff6U];
     enum parity = [0x00000001U, 0x00000000U, 0x00000000U, 0x13c9e684U];
     enum id = "SFMT-19937:122-18-1-11-1:dfffffef-ddfecb7f-bffaffff-bffffff6";
@@ -27,6 +29,23 @@ version (MT19937)
         {
             this.seed(seed);
         }
+        void printState()
+        {
+            import std.stdio;
+            "state:".writeln;
+            foreach (row; state[0..2]~state[$-2..$])
+                "%(%08x %)".writefln(row.u32);
+        }
+        void fillState(ubyte b)
+        {
+            ucent_ x;
+            x.u32[0] = b;
+            x.u32[0] = x.u32[0] << 8 | x.u32[0];
+            x.u32[0] = x.u32[0] << 16 | x.u32[0];
+            x.u32[1..$] = x.u32[0];
+            state[] = x;
+        }
+        // checked
         void seed(uint seed)
         {
             uint* psfmt32 = &(state[0].u32[0]);
@@ -48,17 +67,17 @@ version (MT19937)
             else
                 enum lag = 3;
             enum mid = (size - lag) / 2;
-            state = typeof (state).init;
-            auto count = SFMT_N32.max(seed.length + 1);
+            fillState(0x8b);
+            immutable count = seed.length.max(SFMT_N32 - 1);
             uint* psfmt32 = &(state[0].u32[0]);
             uint r = func1(psfmt32[idxof!0] ^ psfmt32[idxof!mid] ^ psfmt32[idxof!(SFMT_N32 - 1)]);
             psfmt32[idxof!mid] += r;
             r += seed.length;
             psfmt32[idxof!(mid+lag)] += r;
             psfmt32[idxof!0] = r;
-            count -= 1;
 
             size_t i = 1;
+            printState;
             foreach (j; 0..count.min(seed.length))
             {
                 r = func1(
@@ -71,6 +90,7 @@ version (MT19937)
                 psfmt32[i.idxof] = r;
                 i = (i + 1) % SFMT_N32;
             }
+            printState;
             foreach (j; count.min(seed.length)..count)
             {
                 r = func1(
@@ -83,6 +103,7 @@ version (MT19937)
                 psfmt32[i.idxof] = r;
                 i = (i + 1) % SFMT_N32;
             }
+            printState;
             foreach (j; 0..SFMT_N32)
             {
                 r = func2(
@@ -95,18 +116,112 @@ version (MT19937)
                 psfmt32[i.idxof] = r;
                 i = (i + 1) % SFMT_N32;
             }
+            printState;
             idx = SFMT_N32;
             assureLongPeriod;
         }
+        version (Big32){} else
         T next(T)()
-            if (is (T == ulong) || is (T == uint))
+            if (is (T == ulong))
         {
-            return T.init;
+            ulong* psfmt64 = &(state[0].u64[0]);
+            assert (idx % 2 == 0, "out of alignment");
+            if (SFMT_N32 <= idx)
+                generateAll;
+            immutable r = psfmt64[idx / 2];
+            idx += 2;
+            return r;
+        }
+        version (Big64){} else
+        T next(T)()
+            if (is (T == uint))
+        {
+            uint* psfmt32 = &(state[0].u32[0]);
+            if (SFMT_N32 <= idx)
+                generateAll;
+            immutable r = psfmt32[idx];
+            idx += 1;
+            return r;
         }
         T next(T)(size_t size)
             if (is (T == ulong[]) || is (T == uint[]))
         {
-            return T.init;
+            return cast(T)fill(cast(ucent_[])(new T(size)));
+        }
+        private auto fill(ucent_[] array)
+        {
+            immutable size = array.length;
+            recursion(
+                array[0], state[0],
+                state[0 + SFMT_POS1],
+                state[SFMT_N - 2], state[SFMT_N - 1]);
+            recursion(
+                array[1], state[1],
+                state[1 + SFMT_POS1],
+                state[SFMT_N - 1], array[0]);
+
+            foreach (i; 2 .. SFMT_N-SFMT_POS1)
+            {
+                recursion(
+                    array[i], state[i],
+                    state[i + SFMT_POS1],
+                    array[i - 2], array[i - 1]);
+            }
+            foreach (i; SFMT_N-SFMT_POS1 .. SFMT_N)
+            {
+                recursion(
+                    array[i], state[i],
+                    array[i + SFMT_POS1 - SFMT_N],
+                    array[i - 2], array[i - 1]);
+            }
+            foreach (i; SFMT_N .. size-SFMT_N)
+            {
+                recursion(
+                    array[i], array[i - SFMT_N],
+                    array[i + SFMT_POS1 - SFMT_N],
+                    array[i - 2], array[i - 1]);
+            }
+            foreach (j; 0..ptrdiff_t(2*SFMT_N-size).max(0))
+            {
+                state[j] = array[j + size - SFMT_N];
+            }
+            size_t j = ptrdiff_t(2*SFMT_N-size).max(0);
+            foreach (i; size-SFMT_N..size)
+            {
+                recursion(
+                    array[i], array[i - SFMT_N],
+                    array[i + SFMT_POS1 - SFMT_N],
+                    array[i - 2], array[i - 1]);
+                state[j] = array[i];
+                j += 1;
+            }
+            return array;
+        }
+        private void generateAll()
+        {
+            recursion(
+                state[0], state[0],
+                state[0+SFMT_POS1],
+                state[SFMT_N - 2], state[SFMT_N - 1]);
+            recursion(
+                state[1], state[1],
+                state[1+SFMT_POS1],
+                state[SFMT_N - 1], state[0]);
+            foreach (i; 2..SFMT_N-SFMT_POS1)
+            {
+                recursion(
+                    state[i], state[i],
+                    state[i+SFMT_POS1],
+                    state[i - 2], state[i - 1]);
+            }
+            foreach (i; SFMT_N-SFMT_POS1..SFMT_N)
+            {
+                recursion(
+                    state[i], state[i],
+                    state[i+SFMT_POS1-SFMT_N],
+                    state[i - 2], state[i - 1]);
+            }
+            idx = 0;
         }
         ucent_[SFMT_N] state;
         int idx;
@@ -150,8 +265,7 @@ version (BigEndian)
     version (Only64bit)
         version = Big64;
     else version (With32bit)
-    {
-    }
+        version = Big32;
     else static assert (false, "Specify Only64bit or With32bit in BigEndian environment");
 }
 version (LittleEndian)
