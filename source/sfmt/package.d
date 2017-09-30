@@ -2,6 +2,34 @@ module sfmt;
 
 version (MT19937)
 {
+    struct SFMT
+    {
+        this (uint seed)
+        {
+            this.seed(seed);
+        }
+        this (uint[] seed)
+        {
+            this.seed(seed);
+        }
+        void seed(uint seed)
+        {
+        }
+        void seed(uint[] seed)
+        {
+        }
+        enum id = "";
+        T next(T)()
+            if (is (T == ulong) || is (T == uint))
+        {
+            return T.init;
+        }
+        T next(T)(size_t size)
+            if (is (T == ulong[]) || is (T == uint[]))
+        {
+            return T.init;
+        }
+    }
 }
 else
 {
@@ -26,3 +54,4 @@ version (LittleEndian)
 version (Only64bit)
     version (With32bit)
         static assert (false, "Specify (at most) one of Only64bit or With32bit");
+
