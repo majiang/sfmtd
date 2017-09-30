@@ -5,5 +5,17 @@
     ],
     "description": "D port of Simd-oriented Fast Mersenne Twister",
     "copyright": "Copyright (c) 2017, majiang",
-    "license": "Unlicense for D port, original License also applies."
+    "license": "Unlicense for D port, original License also applies.",
+    "configurations": [
+        {
+            "name": "with-32",
+            "targetType": "executable",
+            "versions": ["MT19937", "With32bit"]
+        },
+        {
+            "name": "only-64",
+            "targetType": "executable",
+            "versions": ["MT19937", "Only64bit"]
+        }
+    ]
 }
