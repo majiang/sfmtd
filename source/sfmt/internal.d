@@ -17,6 +17,7 @@ union ucent_
 {
     ulong[2] u64;
     uint[4] u32;
+    // checked
     ucent_ opBinary(string op)(int shift)
         if (op == "<<" || op == ">>")
     {
@@ -33,12 +34,13 @@ union ucent_
         ucent_ ret;
         ret.u32[idxof!0] = cast(uint)ol;
         ret.u32[idxof!1] = ol >> 32;
-        ret.u32[idxof!2] = cast(uint)ol;
-        ret.u32[idxof!3] = ol >> 32;
+        ret.u32[idxof!2] = cast(uint)oh;
+        ret.u32[idxof!3] = oh >> 32;
         return ret;
     }
 }
 
+// checked
 void recursion(uint sl1, uint sl2, uint sr1, uint sr2, uint[4] masks)(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
 {
     enum m0 = masks[idxof!0];
