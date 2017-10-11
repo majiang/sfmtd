@@ -3,13 +3,38 @@ import std.stdio;
 void main(string[] args)
 {
     import sfmt;
-    import std.getopt;
+    import std.format, std.getopt;
     size_t width;
     args.getopt("width|w", &width);
-    if (width == 64)
-        check64!SFMT;
-    if (width == 32)
-        check32!SFMT;
+    switch (args[1])
+    {
+        break; case "check":
+            if (width == 64)
+                check64!SFMT;
+            if (width == 32)
+                check32!SFMT;
+            if (width == 96)
+            {
+                writeln("64bit:");
+                check64!SFMT;
+                writeln("32bit:");
+                check32!SFMT;
+            }
+        break; case "speed":
+            if (width == 64)
+                speed64!SFMT;
+            if (width == 32)
+                speed32!SFMT;
+            if (width == 96)
+            {
+                writeln("64bit:");
+                speed64!SFMT;
+                writeln("32bit:");
+                speed32!SFMT;
+            }
+        break; default:
+            throw new Exception("Unknown command '%s'".format(args[1]));
+    }
 }
 void check32(ISFMT)()
 {
@@ -69,4 +94,43 @@ void check(U, ISFMT, SEED)(SEED seed, size_t firstSize, size_t print, size_t sec
         if (check == i)
             break;
     }
+}
+import std.datetime.stopwatch;
+import std.random;
+void speed32(ISFMT)(in size_t n = 1_0000_0000, in size_t t = 10)
+{
+    writeln("phobos-MT\tSFMT");
+    auto buf = new uint[n];
+    foreach (i; 0..t)
+        "%d\t%d".writefln(speedMT(Mt19937(), buf), speedSFMT!uint(ISFMT(), buf));
+}
+void speed64(ISFMT)(in size_t n = 5000_0000, in size_t t = 10)
+{
+    writeln("phobos-MT\tSFMT");
+    auto buf = new ulong[n];
+    foreach (i; 0..t)
+        "%d\t%d".writefln(speedMT(Mt19937_64(), buf), speedSFMT!ulong(ISFMT(), buf));
+}
+auto speedMT(IMT)(IMT mt, void[] _res)
+{
+    mt.seed(unpredictableSeed);
+    auto res = cast(typeof (mt.front)[])_res;
+    auto sw = StopWatch(AutoStart.yes);
+    foreach (i; 0..res.length)
+    {
+        res[i] = mt.front;
+        mt.popFront;
+    }
+    return sw.peek.total!"msecs";
+}
+auto speedSFMT(U, ISFMT)(ISFMT sfmt, void[] _res)
+{
+    sfmt.seed(unpredictableSeed);
+    auto res = cast(U[]) _res;
+    auto sw = StopWatch(AutoStart.yes);
+    foreach (i; 0..res.length)
+    {
+        res[i] = sfmt.next!U;
+    }
+    return sw.peek.total!"msecs";
 }
