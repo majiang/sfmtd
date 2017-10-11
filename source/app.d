@@ -1,10 +1,15 @@
 import std.stdio;
 
-void main()
+void main(string[] args)
 {
     import sfmt;
-    //check64!SFMT;
-    check32!SFMT;
+    import std.getopt;
+    size_t width;
+    args.getopt("width|w", &width);
+    if (width == 64)
+        check64!SFMT;
+    if (width == 32)
+        check32!SFMT;
 }
 void check32(ISFMT)()
 {
@@ -20,8 +25,16 @@ void check64(ISFMT)()
 }
 void check(U, ISFMT, SEED)(SEED seed, size_t firstSize, size_t print, size_t secondSize, size_t check)
 {
-    static if (is (U == uint)) enum fmt = "%8x";
-    static if (is (U == ulong)) enum fmt = "%16x";
+    static if (is (U == uint))
+    {
+        enum fmt = "%10d";
+        enum columns = 5;
+    }
+    static if (is (U == ulong))
+    {
+        enum fmt = "%20d";
+        enum columns = 3;
+    }
 
     import std.exception : enforce;
     import std.string : format;
@@ -31,10 +44,6 @@ void check(U, ISFMT, SEED)(SEED seed, size_t firstSize, size_t print, size_t sec
     static if (is (SEED == uint[]))
         "init_by_array__________".writeln;
     auto sfmt = ISFMT(seed);
-    foreach (row; sfmt.state[0..2]~sfmt.state[$-2..$])
-    {
-        "%(%08x %)".writefln(row.u32[]);
-    }
     auto first = sfmt.next!(U[])(firstSize);
     auto second = sfmt.next!(U[])(secondSize);
     assert (first.length == firstSize);
@@ -46,12 +55,13 @@ void check(U, ISFMT, SEED)(SEED seed, size_t firstSize, size_t print, size_t sec
         (r == a).enforce("mismatch at %d first:%x gen:%x".format(i, a, r));
         if (print <= i)
             continue;
-        (fmt~" ").writefln(r);
-        if ((i+1)%5)
+        (fmt~" ").writef(r);
+        if ((i + 1) % columns)
             continue;
-        //writeln;
+        writeln;
     }
-    writeln;
+    if (print % columns)
+        writeln;
     foreach (i, a; second)
     {
         auto r = sfmt.next!U;

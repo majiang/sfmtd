@@ -77,7 +77,6 @@ version (MT19937)
             psfmt32[idxof!0] = r;
 
             size_t i = 1;
-            printState;
             foreach (j; 0..count.min(seed.length))
             {
                 r = func1(
@@ -90,7 +89,6 @@ version (MT19937)
                 psfmt32[i.idxof] = r;
                 i = (i + 1) % SFMT_N32;
             }
-            printState;
             foreach (j; count.min(seed.length)..count)
             {
                 r = func1(
@@ -103,7 +101,6 @@ version (MT19937)
                 psfmt32[i.idxof] = r;
                 i = (i + 1) % SFMT_N32;
             }
-            printState;
             foreach (j; 0..SFMT_N32)
             {
                 r = func2(
@@ -116,7 +113,6 @@ version (MT19937)
                 psfmt32[i.idxof] = r;
                 i = (i + 1) % SFMT_N32;
             }
-            printState;
             idx = SFMT_N32;
             assureLongPeriod;
         }
