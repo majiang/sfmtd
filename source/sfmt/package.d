@@ -9,7 +9,7 @@ import std.algorithm : max, min;
 
 version (MT19937)
 {
-    enum parameters = sfmt.internal.parseParameters!(19937, 1);
+    enum parameters = sfmt.internal.parseParameters!(19937, 2);
     enum shifts = parameters.shifts;
     enum masks = parameters.masks;
 }
