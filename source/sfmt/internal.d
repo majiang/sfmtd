@@ -41,8 +41,12 @@ union ucent_
 }
 
 // checked
-void recursion(uint sl1, uint sl2, uint sr1, uint sr2, uint[4] masks)(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
+void recursion(uint[4] shifts, uint[4] masks)(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
 {
+    enum sl1 = shifts[0];
+    enum sl2 = shifts[1];
+    enum sr1 = shifts[2];
+    enum sr2 = shifts[3];
     enum m0 = masks[idxof!0];
     enum m1 = masks[idxof!1];
     enum m2 = masks[idxof!2];
@@ -64,4 +68,39 @@ uint func1(uint x)
 uint func2(uint x)
 {
     return (x ^ (x >> 27)) * uint(1566083941);
+}
+
+auto parseParameters(int SFMT_MEXP, size_t row)()
+{
+    import std.algorithm, std.conv, std.format, std.range;
+    auto r = import ("%d.csv".format(SFMT_MEXP)).splitter("\n");
+    foreach (i; 0..row)
+        r.popFront;
+    struct Parameters
+    {
+        int MEXP, DD;
+        ptrdiff_t POS1;
+        uint[4] shifts, masks, parity;
+        this (string[] args)
+        {
+            MEXP = args[0].to!int;
+            DD = args[1].to!int;
+            POS1 = args[2].to!ptrdiff_t;
+            foreach (i; 0..4)
+            {
+                shifts[i] = args[3+i].to!uint;
+                masks[i] = args[7+i].to!uint(16);
+                parity[i] = args[11+i].to!uint(16);
+            }
+        }
+        string id()
+        {
+            return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
+                    MEXP, POS1,
+                    shifts[],
+                    masks[]
+                    );
+        }
+    }
+    return Parameters(r.front.split(","));
 }

@@ -2,21 +2,28 @@ module sfmt;
 
 import std.stdio;
 static import sfmt.internal;
-alias recursion = sfmt.internal.recursion!(18, 1, 11, 1, masks);
+alias recursion = sfmt.internal.recursion!(shifts, masks);
 import sfmt.internal : func1, func2, idxof, ucent_;
 
 import std.algorithm : max, min;
 
 version (MT19937)
 {
-    enum SFMT_MEXP = 19937;
+    enum parameters = sfmt.internal.parseParameters!(19937, 1);
+    enum shifts = parameters.shifts;
+    enum masks = parameters.masks;
+}
+else
+{
+    static assert (false, "Not supported");
+}
+    enum SFMT_MEXP = parameters.MEXP;
     enum SFMT_N = (SFMT_MEXP >> 7) + 1;
     enum SFMT_N64 = SFMT_N << 1;
     enum SFMT_N32 = SFMT_N << 2;
-    enum SFMT_POS1 = 122;
-    enum masks = [0xdfffffefU, 0xddfecb7fU, 0xbffaffffU, 0xbffffff6U];
-    enum parity = [0x00000001U, 0x00000000U, 0x00000000U, 0x13c9e684U];
-    enum id = "SFMT-19937:122-18-1-11-1:dfffffef-ddfecb7f-bffaffff-bffffff6";
+    enum SFMT_POS1 = parameters.POS1;
+    enum parity = parameters.parity;
+    enum id = parameters.id;
 
     struct SFMT
     {
@@ -249,11 +256,6 @@ version (MT19937)
             assert (false, "unreachable?");
         }
     }
-}
-else
-{
-    static assert (false, "Not supported");
-}
 
 version (BigEndian)
 {
