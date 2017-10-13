@@ -227,10 +227,10 @@ version (MT19937)
             uint inner;
             uint* psfmt32 = &(state[0].u32[0]);
             foreach (i; 0..4)
-                inner ^= psfmt32[i.idxof] ^ parity[i];
+                inner ^= psfmt32[i.idxof] & parity[i];
             foreach (i; [16, 8, 4, 2, 1])
                 inner ^= inner >> i;
-            inner ^= 1;
+            inner &= 1;
             if (inner == 1)
                 return false;
             foreach (i; 0..4)
