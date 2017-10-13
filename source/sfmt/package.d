@@ -2,32 +2,32 @@ module sfmt;
 
 import std.stdio;
 static import sfmt.internal;
-alias recursion = sfmt.internal.recursion!(shifts, masks);
 import sfmt.internal : func1, func2, idxof, ucent_;
 
 import std.algorithm : max, min;
 
 version (MT19937)
 {
-    enum parameters = sfmt.internal.parseParameters!(19937, 2);
-    enum shifts = parameters.shifts;
-    enum masks = parameters.masks;
+    alias SFMT19937 = SFMT!(sfmt.internal.parseParameters!(19937, 2));
 }
 else
 {
     static assert (false, "Not supported");
 }
-enum SFMT_MEXP = parameters.MEXP;
-enum SFMT_N = (SFMT_MEXP >> 7) + 1;
-enum SFMT_N64 = SFMT_N << 1;
-enum SFMT_N32 = SFMT_N << 2;
-enum SFMT_POS1 = parameters.POS1;
-enum parity = parameters.parity;
-enum id = parameters.id;
 
-struct SFMT
+struct SFMT(sfmt.internal.Parameters parameters)
 {
-    enum id = .id;
+    enum SFMT_MEXP = parameters.MEXP;
+    enum SFMT_N = (SFMT_MEXP >> 7) + 1;
+    enum SFMT_N64 = SFMT_N << 1;
+    enum SFMT_N32 = SFMT_N << 2;
+    enum SFMT_POS1 = parameters.POS1;
+    enum shifts = parameters.shifts;
+    enum masks = parameters.masks;
+    enum parity = parameters.parity;
+    enum id = parameters.id;
+    alias recursion = sfmt.internal.recursion!(shifts, masks);
+
     this (uint seed)
     {
         this.seed(seed);

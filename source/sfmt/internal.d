@@ -72,35 +72,36 @@ uint func2(uint x)
 
 auto parseParameters(int SFMT_MEXP, size_t row)()
 {
-    import std.algorithm, std.conv, std.format, std.range;
+    import std.algorithm, std.format, std.range;
     auto r = import ("%d.csv".format(SFMT_MEXP)).splitter("\n");
     foreach (i; 0..row)
         r.popFront;
-    struct Parameters
+    return Parameters(r.front.split(","));
+}
+struct Parameters
+{
+    import std.conv, std.format;
+    int MEXP, DD;
+    ptrdiff_t POS1;
+    uint[4] shifts, masks, parity;
+    this (string[] args)
     {
-        int MEXP, DD;
-        ptrdiff_t POS1;
-        uint[4] shifts, masks, parity;
-        this (string[] args)
+        MEXP = args[0].to!int;
+        DD = args[1].to!int;
+        POS1 = args[2].to!ptrdiff_t;
+        foreach (i; 0..4)
         {
-            MEXP = args[0].to!int;
-            DD = args[1].to!int;
-            POS1 = args[2].to!ptrdiff_t;
-            foreach (i; 0..4)
-            {
-                shifts[i] = args[3+i].to!uint;
-                masks[i] = args[7+i].to!uint(16);
-                parity[i] = args[11+i].to!uint(16);
-            }
-        }
-        string id()
-        {
-            return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
-                    MEXP, POS1,
-                    shifts[],
-                    masks[]
-                    );
+            shifts[i] = args[3+i].to!uint;
+            masks[i] = args[7+i].to!uint(16);
+            parity[i] = args[11+i].to!uint(16);
         }
     }
-    return Parameters(r.front.split(","));
+    string id()
+    {
+        return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
+                MEXP, POS1,
+                shifts[],
+                masks[]
+                );
+    }
 }
