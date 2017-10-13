@@ -8,7 +8,7 @@ import std.algorithm : max, min;
 
 version (MT19937)
 {
-    alias SFMT19937 = SFMT!(sfmt.internal.parseParameters!(19937, 1));
+    alias SFMT19937 = SFMT!(sfmt.internal.parseParameters!(19937, 2));
 }
 else
 {
