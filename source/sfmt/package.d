@@ -6,14 +6,12 @@ import sfmt.internal : func1, func2, idxof, ucent_;
 
 import std.algorithm : max, min;
 
-version (MT19937)
-{
-    alias SFMT19937 = SFMT!(sfmt.internal.parseParameters!(19937, 1));
-}
-else
-{
-    static assert (false, "Not supported");
-}
+
+mixin (sfmt.internal.sfmtMixins([size_t(607), 1279, 2281, 4253, 11213, 19937], [
+        size_t(1), 2, 3, 4, 5, 6, 7, 8,
+        9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31, 32]));
 
 struct SFMT(sfmt.internal.Parameters parameters)
 {
