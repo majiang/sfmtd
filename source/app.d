@@ -9,28 +9,59 @@ void main(string[] args)
     switch (args[1])
     {
         break; case "check":
-            if (width == 64)
-                check64!SFMT;
-            if (width == 32)
-                check32!SFMT;
-            if (width == 96)
+            if (width & 64)
             {
                 writeln("64bit:");
-                check64!SFMT;
+                check64!SFMT19937;
+            }
+            if (width & 32)
+            {
                 writeln("32bit:");
-                check32!SFMT;
+                check32!SFMT19937;
+            }
+        break; case "check2":
+            if (width & 64)
+            {
+                writeln("64bit:");
+                check64!SFMT19937_1;
+            }
+            if (width & 32)
+            {
+                writeln("32bit:");
+                check32!SFMT19937_1;
+            }
+        break; case "check11213":
+            if (width & 64)
+            {
+                writeln("64bit:");
+                check64!SFMT11213;
+            }
+            if (width & 32)
+            {
+                writeln("32bit:");
+                check32!SFMT11213;
+            }
+        break; case "check11213-2":
+            if (width & 64)
+            {
+                writeln("64bit:");
+                check64!SFMT11213_1;
+            }
+            if (width & 32)
+            {
+                writeln("32bit:");
+                check32!SFMT11213_1;
             }
         break; case "speed":
-            if (width == 64)
-                speed64!SFMT;
-            if (width == 32)
-                speed32!SFMT;
-            if (width == 96)
+            if (width & 64)
             {
                 writeln("64bit:");
-                speed64!SFMT;
+                speed64!SFMT19937;
+            }
+            if (width & 32)
+            {
                 writeln("32bit:");
-                speed32!SFMT;
+                speed32!SFMT19937;
             }
         break; default:
             throw new Exception("Unknown command '%s'".format(args[1]));

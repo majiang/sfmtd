@@ -9,6 +9,9 @@
     "buildOptions": [
         "optimize"
     ],
+    "stringImportPaths": [
+        "params"
+    ],
     "configurations": [
         {
             "name": "with-32",
