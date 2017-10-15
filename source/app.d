@@ -9,26 +9,35 @@ void main(string[] args)
     switch (args[1])
     {
         break; case "check":
-            if (width == 64)
-                check64!SFMT19937;
-            if (width == 32)
-                check32!SFMT19937;
-            if (width == 96)
+            if (width & 64)
             {
                 writeln("64bit:");
                 check64!SFMT19937;
+            }
+            if (width & 32)
+            {
                 writeln("32bit:");
                 check32!SFMT19937;
             }
+        break; case "check2":
+            if (width & 64)
+            {
+                writeln("64bit:");
+                check64!SFMT19937_1;
+            }
+            if (width & 32)
+            {
+                writeln("32bit:");
+                check32!SFMT19937_1;
+            }
         break; case "speed":
-            if (width == 64)
-                speed64!SFMT19937;
-            if (width == 32)
-                speed32!SFMT19937;
-            if (width == 96)
+            if (width & 64)
             {
                 writeln("64bit:");
                 speed64!SFMT19937;
+            }
+            if (width & 32)
+            {
                 writeln("32bit:");
                 speed32!SFMT19937;
             }
