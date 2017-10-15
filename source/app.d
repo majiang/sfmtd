@@ -30,6 +30,28 @@ void main(string[] args)
                 writeln("32bit:");
                 check32!SFMT19937_1;
             }
+        break; case "check11213":
+            if (width & 64)
+            {
+                writeln("64bit:");
+                check64!SFMT11213;
+            }
+            if (width & 32)
+            {
+                writeln("32bit:");
+                check32!SFMT11213;
+            }
+        break; case "check11213-2":
+            if (width & 64)
+            {
+                writeln("64bit:");
+                check64!SFMT11213_1;
+            }
+            if (width & 32)
+            {
+                writeln("32bit:");
+                check32!SFMT11213_1;
+            }
         break; case "speed":
             if (width & 64)
             {
