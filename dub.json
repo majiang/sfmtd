@@ -9,6 +9,7 @@
     "buildOptions": [
         "optimize"
     ],
+    "mainSourceFile": "source/app.d",
     "stringImportPaths": [
         "params"
     ],
