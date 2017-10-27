@@ -15,11 +15,10 @@ mixin (sfmt.internal.sfmtMixins([size_t(607), 1279, 2281, 4253, 11213, 19937], [
 
 struct SFMT(sfmt.internal.Parameters parameters)
 {
-    enum SFMT_MEXP = parameters.MEXP;
-    enum SFMT_N = (SFMT_MEXP >> 7) + 1;
-    enum SFMT_N64 = SFMT_N << 1;
-    enum SFMT_N32 = SFMT_N << 2;
-    enum SFMT_POS1 = parameters.POS1;
+    enum mersenneExponent = parameters.mersenneExponent;
+    enum n = (mersenneExponent >> 7) + 1;
+    enum size = n << 2;
+    enum m = parameters.m;
     enum shifts = parameters.shifts;
     enum masks = parameters.masks;
     enum parity = parameters.parity;
@@ -55,14 +54,13 @@ struct SFMT(sfmt.internal.Parameters parameters)
     {
         uint* psfmt32 = &(state[0].u32[0]);
         psfmt32[idxof!0] = seed;
-        foreach (i; 1..SFMT_N32)
+        foreach (i; 1..size)
             psfmt32[i.idxof] = 1812433253U * (psfmt32[(i - 1).idxof] ^ (psfmt32[(i - 1).idxof] >> 30)) + i;
-        idx = SFMT_N32;
+        idx = size;
         assureLongPeriod;
     }
     void seed(uint[] seed)
     {
-        enum size = SFMT_N * 4;
         static if (size >= 623)
             enum lag = 11;
         else static if (size >= 68)
@@ -73,9 +71,9 @@ struct SFMT(sfmt.internal.Parameters parameters)
             enum lag = 3;
         enum mid = (size - lag) / 2;
         fillState(0x8b);
-        immutable count = seed.length.max(SFMT_N32 - 1);
+        immutable count = seed.length.max(size - 1);
         uint* psfmt32 = &(state[0].u32[0]);
-        uint r = func1(psfmt32[idxof!0] ^ psfmt32[idxof!mid] ^ psfmt32[idxof!(SFMT_N32 - 1)]);
+        uint r = func1(psfmt32[idxof!0] ^ psfmt32[idxof!mid] ^ psfmt32[idxof!(size - 1)]);
         psfmt32[idxof!mid] += r;
         r += seed.length;
         psfmt32[idxof!(mid+lag)] += r;
@@ -86,39 +84,39 @@ struct SFMT(sfmt.internal.Parameters parameters)
         {
             r = func1(
                     psfmt32[i.idxof]
-                  ^ psfmt32[((i+mid)%SFMT_N32).idxof]
-                  ^ psfmt32[((i+SFMT_N32-1)%SFMT_N32).idxof]);
-            psfmt32[((i+mid)%SFMT_N32).idxof] += r;
+                  ^ psfmt32[((i+mid)%size).idxof]
+                  ^ psfmt32[((i+size-1)%size).idxof]);
+            psfmt32[((i+mid)%size).idxof] += r;
             r += seed[j] + i;
-            psfmt32[((i+mid+lag)%SFMT_N32).idxof] += r;
+            psfmt32[((i+mid+lag)%size).idxof] += r;
             psfmt32[i.idxof] = r;
-            i = (i + 1) % SFMT_N32;
+            i = (i + 1) % size;
         }
         foreach (j; count.min(seed.length)..count)
         {
             r = func1(
                     psfmt32[i.idxof]
-                  ^ psfmt32[((i+mid)%SFMT_N32).idxof]
-                  ^ psfmt32[((i+SFMT_N32-1)%SFMT_N32).idxof]);
-            psfmt32[((i+mid)%SFMT_N32).idxof] += r;
+                  ^ psfmt32[((i+mid)%size).idxof]
+                  ^ psfmt32[((i+size-1)%size).idxof]);
+            psfmt32[((i+mid)%size).idxof] += r;
             r += i;
-            psfmt32[((i+mid+lag)%SFMT_N32).idxof] += r;
+            psfmt32[((i+mid+lag)%size).idxof] += r;
             psfmt32[i.idxof] = r;
-            i = (i + 1) % SFMT_N32;
+            i = (i + 1) % size;
         }
-        foreach (j; 0..SFMT_N32)
+        foreach (j; 0..size)
         {
             r = func2(
                     psfmt32[i.idxof]
-                  + psfmt32[((i+mid)%SFMT_N32).idxof]
-                  + psfmt32[((i+SFMT_N32-1)%SFMT_N32).idxof]);
-            psfmt32[((i+mid)%SFMT_N32).idxof] ^= r;
+                  + psfmt32[((i+mid)%size).idxof]
+                  + psfmt32[((i+size-1)%size).idxof]);
+            psfmt32[((i+mid)%size).idxof] ^= r;
             r -= i;
-            psfmt32[((i+mid+lag)%SFMT_N32).idxof] ^= r;
+            psfmt32[((i+mid+lag)%size).idxof] ^= r;
             psfmt32[i.idxof] = r;
-            i = (i + 1) % SFMT_N32;
+            i = (i + 1) % size;
         }
-        idx = SFMT_N32;
+        idx = size;
         assureLongPeriod;
     }
     version (Big32){} else
@@ -127,7 +125,7 @@ struct SFMT(sfmt.internal.Parameters parameters)
     {
         ulong* psfmt64 = &(state[0].u64[0]);
         assert (idx % 2 == 0, "out of alignment");
-        if (SFMT_N32 <= idx)
+        if (size <= idx)
             generateAll;
         immutable r = psfmt64[idx / 2];
         idx += 2;
@@ -138,7 +136,7 @@ struct SFMT(sfmt.internal.Parameters parameters)
         if (is (T == uint))
     {
         uint* psfmt32 = &(state[0].u32[0]);
-        if (SFMT_N32 <= idx)
+        if (size <= idx)
             generateAll;
         immutable r = psfmt32[idx];
         idx += 1;
@@ -150,48 +148,53 @@ struct SFMT(sfmt.internal.Parameters parameters)
         return cast(T)fill(cast(ucent_[])(new T(size)));
     }
     private auto fill(ucent_[] array)
+    in
+    {
+        assert (n <= array.length);
+    }
+    body
     {
         immutable size = array.length;
         recursion(
             array[0], state[0],
-            state[0 + SFMT_POS1],
-            state[SFMT_N - 2], state[SFMT_N - 1]);
+            state[0 + m],
+            state[n - 2], state[n - 1]);
         recursion(
             array[1], state[1],
-            state[1 + SFMT_POS1],
-            state[SFMT_N - 1], array[0]);
+            state[1 + m],
+            state[n - 1], array[0]);
 
-        foreach (i; 2 .. SFMT_N-SFMT_POS1)
+        foreach (i; 2 .. n-m)
         {
             recursion(
                 array[i], state[i],
-                state[i + SFMT_POS1],
+                state[i + m],
                 array[i - 2], array[i - 1]);
         }
-        foreach (i; SFMT_N-SFMT_POS1 .. SFMT_N)
+        foreach (i; n-m .. n)
         {
             recursion(
                 array[i], state[i],
-                array[i + SFMT_POS1 - SFMT_N],
+                array[i + m - n],
                 array[i - 2], array[i - 1]);
         }
-        foreach (i; SFMT_N .. size-SFMT_N)
+        foreach (i; n .. size-n)
         {
             recursion(
-                array[i], array[i - SFMT_N],
-                array[i + SFMT_POS1 - SFMT_N],
+                array[i], array[i - n],
+                array[i + m - n],
                 array[i - 2], array[i - 1]);
         }
-        foreach (j; 0..ptrdiff_t(2*SFMT_N-size).max(0))
+        foreach (j; 0..ptrdiff_t(2*n-size).max(0))
         {
-            state[j] = array[j + size - SFMT_N];
+            state[j] = array[j + size - n];
         }
-        size_t j = ptrdiff_t(2*SFMT_N-size).max(0);
-        foreach (i; size-SFMT_N..size)
+        size_t j = ptrdiff_t(2*n-size).max(0);
+        foreach (i; size-n..size)
         {
             recursion(
-                array[i], array[i - SFMT_N],
-                array[i + SFMT_POS1 - SFMT_N],
+                array[i], array[i - n],
+                array[i + m - n],
                 array[i - 2], array[i - 1]);
             state[j] = array[i];
             j += 1;
@@ -202,29 +205,29 @@ struct SFMT(sfmt.internal.Parameters parameters)
     {
         recursion(
             state[0], state[0],
-            state[0+SFMT_POS1],
-            state[SFMT_N - 2], state[SFMT_N - 1]);
+            state[0+m],
+            state[n - 2], state[n - 1]);
         recursion(
             state[1], state[1],
-            state[1+SFMT_POS1],
-            state[SFMT_N - 1], state[0]);
-        foreach (i; 2..SFMT_N-SFMT_POS1)
+            state[1+m],
+            state[n - 1], state[0]);
+        foreach (i; 2..n-m)
         {
             recursion(
                 state[i], state[i],
-                state[i+SFMT_POS1],
+                state[i+m],
                 state[i - 2], state[i - 1]);
         }
-        foreach (i; SFMT_N-SFMT_POS1..SFMT_N)
+        foreach (i; n-m..n)
         {
             recursion(
                 state[i], state[i],
-                state[i+SFMT_POS1-SFMT_N],
+                state[i+m-n],
                 state[i - 2], state[i - 1]);
         }
         idx = 0;
     }
-    ucent_[SFMT_N] state;
+    ucent_[n] state;
     int idx;
     /// returns true if modification is done
     bool assureLongPeriod()
