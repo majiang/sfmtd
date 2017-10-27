@@ -19,7 +19,7 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum SFMT_N = (mersenneExponent >> 7) + 1;
     enum SFMT_N64 = SFMT_N << 1;
     enum SFMT_N32 = SFMT_N << 2;
-    enum SFMT_POS1 = parameters.POS1;
+    enum m = parameters.m;
     enum shifts = parameters.shifts;
     enum masks = parameters.masks;
     enum parity = parameters.parity;
@@ -154,32 +154,32 @@ struct SFMT(sfmt.internal.Parameters parameters)
         immutable size = array.length;
         recursion(
             array[0], state[0],
-            state[0 + SFMT_POS1],
+            state[0 + m],
             state[SFMT_N - 2], state[SFMT_N - 1]);
         recursion(
             array[1], state[1],
-            state[1 + SFMT_POS1],
+            state[1 + m],
             state[SFMT_N - 1], array[0]);
 
-        foreach (i; 2 .. SFMT_N-SFMT_POS1)
+        foreach (i; 2 .. SFMT_N-m)
         {
             recursion(
                 array[i], state[i],
-                state[i + SFMT_POS1],
+                state[i + m],
                 array[i - 2], array[i - 1]);
         }
-        foreach (i; SFMT_N-SFMT_POS1 .. SFMT_N)
+        foreach (i; SFMT_N-m .. SFMT_N)
         {
             recursion(
                 array[i], state[i],
-                array[i + SFMT_POS1 - SFMT_N],
+                array[i + m - SFMT_N],
                 array[i - 2], array[i - 1]);
         }
         foreach (i; SFMT_N .. size-SFMT_N)
         {
             recursion(
                 array[i], array[i - SFMT_N],
-                array[i + SFMT_POS1 - SFMT_N],
+                array[i + m - SFMT_N],
                 array[i - 2], array[i - 1]);
         }
         foreach (j; 0..ptrdiff_t(2*SFMT_N-size).max(0))
@@ -191,7 +191,7 @@ struct SFMT(sfmt.internal.Parameters parameters)
         {
             recursion(
                 array[i], array[i - SFMT_N],
-                array[i + SFMT_POS1 - SFMT_N],
+                array[i + m - SFMT_N],
                 array[i - 2], array[i - 1]);
             state[j] = array[i];
             j += 1;
@@ -202,24 +202,24 @@ struct SFMT(sfmt.internal.Parameters parameters)
     {
         recursion(
             state[0], state[0],
-            state[0+SFMT_POS1],
+            state[0+m],
             state[SFMT_N - 2], state[SFMT_N - 1]);
         recursion(
             state[1], state[1],
-            state[1+SFMT_POS1],
+            state[1+m],
             state[SFMT_N - 1], state[0]);
-        foreach (i; 2..SFMT_N-SFMT_POS1)
+        foreach (i; 2..SFMT_N-m)
         {
             recursion(
                 state[i], state[i],
-                state[i+SFMT_POS1],
+                state[i+m],
                 state[i - 2], state[i - 1]);
         }
-        foreach (i; SFMT_N-SFMT_POS1..SFMT_N)
+        foreach (i; SFMT_N-m..SFMT_N)
         {
             recursion(
                 state[i], state[i],
-                state[i+SFMT_POS1-SFMT_N],
+                state[i+m-SFMT_N],
                 state[i - 2], state[i - 1]);
         }
         idx = 0;

@@ -82,13 +82,13 @@ struct Parameters
 {
     import std.conv, std.format;
     int mersenneExponent, DD;
-    ptrdiff_t POS1;
+    ptrdiff_t m;
     uint[4] shifts, masks, parity;
     this (string[] args)
     {
         mersenneExponent = args[0].to!int;
         DD = args[1].to!int;
-        POS1 = args[2].to!ptrdiff_t;
+        m = args[2].to!ptrdiff_t;
         foreach (i; 0..4)
         {
             shifts[i] = args[3+i].to!uint;
@@ -99,7 +99,7 @@ struct Parameters
     string id()
     {
         return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
-                mersenneExponent, POS1,
+                mersenneExponent, m,
                 shifts[],
                 masks[]
                 );
