@@ -15,8 +15,8 @@ mixin (sfmt.internal.sfmtMixins([size_t(607), 1279, 2281, 4253, 11213, 19937], [
 
 struct SFMT(sfmt.internal.Parameters parameters)
 {
-    enum SFMT_MEXP = parameters.MEXP;
-    enum SFMT_N = (SFMT_MEXP >> 7) + 1;
+    enum mersenneExponent = parameters.mersenneExponent;
+    enum SFMT_N = (mersenneExponent >> 7) + 1;
     enum SFMT_N64 = SFMT_N << 1;
     enum SFMT_N32 = SFMT_N << 2;
     enum SFMT_POS1 = parameters.POS1;

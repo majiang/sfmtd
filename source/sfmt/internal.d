@@ -70,10 +70,10 @@ uint func2(uint x)
     return (x ^ (x >> 27)) * uint(1566083941);
 }
 
-auto parseParameters(int SFMT_MEXP, size_t row)()
+auto parseParameters(int SFMT_mersenneExponent, size_t row)()
 {
     import std.algorithm, std.format, std.range;
-    auto r = import ("%d.csv".format(SFMT_MEXP)).splitter("\n");
+    auto r = import ("%d.csv".format(SFMT_mersenneExponent)).splitter("\n");
     foreach (i; 0..row)
         r.popFront;
     return Parameters(r.front.split(","));
@@ -81,12 +81,12 @@ auto parseParameters(int SFMT_MEXP, size_t row)()
 struct Parameters
 {
     import std.conv, std.format;
-    int MEXP, DD;
+    int mersenneExponent, DD;
     ptrdiff_t POS1;
     uint[4] shifts, masks, parity;
     this (string[] args)
     {
-        MEXP = args[0].to!int;
+        mersenneExponent = args[0].to!int;
         DD = args[1].to!int;
         POS1 = args[2].to!ptrdiff_t;
         foreach (i; 0..4)
@@ -99,7 +99,7 @@ struct Parameters
     string id()
     {
         return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
-                MEXP, POS1,
+                mersenneExponent, POS1,
                 shifts[],
                 masks[]
                 );
