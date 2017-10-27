@@ -15,6 +15,10 @@ mixin (sfmt.internal.sfmtMixins([size_t(607), 1279, 2281, 4253, 11213, 19937], [
 
 struct SFMT(sfmt.internal.Parameters parameters)
 {
+    enum isUniformRandom = true;
+    enum empty = false;
+    enum min = ulong.min;
+    enum max = ulong.max;
     enum mersenneExponent = parameters.mersenneExponent;
     enum n = (mersenneExponent >> 7) + 1;
     enum size = n << 2;
@@ -118,6 +122,22 @@ struct SFMT(sfmt.internal.Parameters parameters)
         }
         idx = size;
         assureLongPeriod;
+    }
+    /// input range interface.
+    ulong front() @property
+    {
+        assert (idx % 2 == 0, "out of alignment");
+        ulong* psfmt64 = &(state[0].u64[0]);
+        if (size <= idx) // in current implementation,
+            generateAll; // this is necessary for first call.
+        return psfmt64[idx / 2];
+    }
+    /// ditto.
+    void popFront()
+    {
+        idx += 2;
+        if (size <= idx) // in current implementation,
+            generateAll; // this is necessary when only popFront is called repeatedly.
     }
     version (Big32){} else
     T next(T)()
@@ -256,6 +276,23 @@ struct SFMT(sfmt.internal.Parameters parameters)
         }
         assert (false, "unreachable?");
     }
+}
+unittest
+{
+    import std.random;
+    static assert (isUniformRNG!SFMT19937);
+    assert (SFMT19937(4321u).front == 16924766246869039260UL);
+    import std.algorithm : equal;
+    import std.range : take;
+    pragma (msg, "check output of original and range interfaces.");
+    // currently, only normal case is tested: need to test the cases front and popFront are unequally called.
+    assert (SFMT19937(4321u).next!(ulong[])(1000).equal(
+            SFMT19937(4321u).take(1000)));
+    import std.traits : isIntegral;
+    auto sfmt = SFMT19937(4321u),
+        x = sfmt.uniform01!real,
+        y = sfmt.uniform01!double,
+        z = sfmt.uniform01!float;
 }
 
 version (BigEndian)
