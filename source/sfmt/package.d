@@ -17,7 +17,6 @@ struct SFMT(sfmt.internal.Parameters parameters)
 {
     enum mersenneExponent = parameters.mersenneExponent;
     enum SFMT_N = (mersenneExponent >> 7) + 1;
-    enum SFMT_N64 = SFMT_N << 1;
     enum SFMT_N32 = SFMT_N << 2;
     enum m = parameters.m;
     enum shifts = parameters.shifts;
@@ -150,6 +149,11 @@ struct SFMT(sfmt.internal.Parameters parameters)
         return cast(T)fill(cast(ucent_[])(new T(size)));
     }
     private auto fill(ucent_[] array)
+    in
+    {
+        assert (SFMT_N <= array.length);
+    }
+    body
     {
         immutable size = array.length;
         recursion(
