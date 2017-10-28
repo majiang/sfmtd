@@ -24,7 +24,11 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum parity = parameters.parity;
     enum id = parameters.id;
     alias recursion = sfmt.internal.recursion!(shifts, masks);
-
+    ucent_[n] state;
+    mixin SFMTMixin;
+}
+mixin template SFMTMixin()
+{
     this (uint seed)
     {
         this.seed(seed);
@@ -227,7 +231,6 @@ struct SFMT(sfmt.internal.Parameters parameters)
         }
         idx = 0;
     }
-    ucent_[n] state;
     int idx;
     /// returns true if modification is done
     bool assureLongPeriod()
