@@ -112,15 +112,3 @@ string sfmtMixin(size_t mexp, size_t row)
     return "alias SFMT%d_%d = SFMT!(sfmt.internal.parseParameters!(%d, %d));\n".format(
             mexp, row-1, mexp, row);
 }
-string sfmtMixins(size_t[] mexps, size_t[] rows)
-{
-    import std.format;
-    string ret;
-    foreach (mexp; mexps)
-    {
-        foreach (row; rows)
-            ret ~= mexp.sfmtMixin(row);
-        ret ~= "alias SFMT%d = SFMT%d_0;\n".format(mexp, mexp);
-    }
-    return ret;
-}

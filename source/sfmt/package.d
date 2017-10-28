@@ -6,12 +6,17 @@ import sfmt.internal : func1, func2, idxof, ucent_;
 
 import std.algorithm : max, min;
 
-
-mixin (sfmt.internal.sfmtMixins([size_t(607), 1279, 2281, 4253, 11213, 19937], [
-        size_t(1), 2, 3, 4, 5, 6, 7, 8,
-        9, 10, 11, 12, 13, 14, 15, 16,
-        17, 18, 19, 20, 21, 22, 23, 24,
-        25, 26, 27, 28, 29, 30, 31, 32]));
+static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
+{
+    import std.range : iota;
+    import std.algorithm : map;
+    import std.format : format;
+    static foreach (row; 32.iota.map!(_=>_+1))
+    {
+        mixin (sfmt.internal.sfmtMixin(mexp, row));
+    }
+    mixin ("alias SFMT%d = SFMT%d_0;".format(mexp, mexp));
+}
 
 struct SFMT(sfmt.internal.Parameters parameters)
 {
