@@ -262,6 +262,21 @@ mixin template SFMTMixin()
         }
         assert (false, "unreachable?");
     }
+    void dumpState()
+    {
+        debug
+        {
+            import std.stdio;
+            foreach (i, elem; state)
+            {
+                if (i % 2)
+                    stderr.write(" ");
+                stderr.writef("%(%016x-%)", elem.u64[]);
+                if (i % 2)
+                    stderr.writeln;
+            }
+        }
+    }
 }
 struct RunTimeSFMT
 {
@@ -272,10 +287,21 @@ struct RunTimeSFMT
     size_t m;
     size_t[4] shifts, masks, parity;
     ucent_[] state;
+    this (sfmt.internal.Parameters parameters)
+    {
+        mexp(parameters.mersenneExponent);
+        m = parameters.m;
+        shifts = parameters.shifts;
+        masks = parameters.masks;
+        parity = parameters.parity;
+        import std.random : unpredictableSeed;
+        seed(unpredictableSeed);
+    }
     size_t mexp(size_t value) @property
     {
         mersenneExponent = value;
-        n = value >> 7;
+        n = (value >> 7) + 1;
+        state.length = n;
         size = n << 2;
         if (size >= 623)
             lag = 11;
@@ -311,6 +337,20 @@ struct RunTimeSFMT
         r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
         r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
     }
+}
+unittest
+{
+    auto ct = SFMT19937(13579u);
+    RunTimeSFMT rt;
+    rt.mexp(ct.mersenneExponent);
+    rt.m = ct.m;
+    rt.shifts = ct.shifts;
+    rt.masks = ct.masks;
+    rt.parity = ct.parity;
+    rt.seed(13579u);
+    foreach (i; 0..1000)
+        assert (ct.next!ulong == rt.next!ulong);
+    stderr.writeln("unittest passed!");
 }
 
 version (BigEndian)
