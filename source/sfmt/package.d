@@ -77,18 +77,22 @@ mixin template SFMTMixin()
         static if (__traits (compiles, idxof!size))
         {
             enum tail = idxof!(size - 1);
+            enum imid = idxof!mid;
+            enum iml = idxof!(mid+lag);
         }
         else
         {
             immutable tail = (size - 1).idxof;
+            immutable imid = mid.idxof;
+            immutable iml = (mid+lag).idxof;
         }
         fillState(0x8b);
         immutable count = seed.length.max(size - 1);
         uint* psfmt32 = &(state[0].u32[0]);
-        uint r = func1(psfmt32[idxof!0] ^ psfmt32[idxof!mid] ^ psfmt32[tail]);
-        psfmt32[idxof!mid] += r;
+        uint r = func1(psfmt32[idxof!0] ^ psfmt32[imid] ^ psfmt32[tail]);
+        psfmt32[imid] += r;
         r += seed.length;
-        psfmt32[idxof!(mid+lag)] += r;
+        psfmt32[iml] += r;
         psfmt32[idxof!0] = r;
 
         size_t i = 1;
@@ -290,6 +294,7 @@ struct RunTimeSFMT
         else
             lag = 3;
         mid = (size - lag) / 2;
+        return value;
     }
     void recursion(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
     {
