@@ -240,8 +240,8 @@ mixin template SFMTMixin()
     {
         uint inner;
         uint* psfmt32 = &(state[0].u32[0]);
-        foreach (i; 0..4)
-            inner ^= psfmt32[i.idxof] & parity[i];
+        static foreach (i; 0..4)
+            inner ^= psfmt32[idxof!i] & parity[i];
         foreach (i; [16, 8, 4, 2, 1])
             inner ^= inner >> i;
         inner &= 1;
