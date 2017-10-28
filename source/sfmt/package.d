@@ -27,13 +27,29 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum mersenneExponent = parameters.mersenneExponent;
     enum n = (mersenneExponent >> 7) + 1;
     enum size = n << 2;
+    static if (size >= 623)
+        enum lag = 11;
+    else static if (size >= 68)
+        enum lag = 7;
+    else static if (size >= 39)
+        enum lag = 5;
+    else
+        enum lag = 3;
+    enum mid = (size - lag) / 2;
+    enum tail = idxof!(size - 1);
+    enum imid = idxof!mid;
+    enum iml = idxof!(mid+lag);
     enum m = parameters.m;
     enum shifts = parameters.shifts;
     enum masks = parameters.masks;
     enum parity = parameters.parity;
     enum id = parameters.id;
     alias recursion = sfmt.internal.recursion!(shifts, masks);
-
+    ucent_[n] state;
+    mixin SFMTMixin;
+}
+mixin template SFMTMixin()
+{
     this (uint seed)
     {
         this.seed(seed);
@@ -70,22 +86,13 @@ struct SFMT(sfmt.internal.Parameters parameters)
     }
     void seed(uint[] seed)
     {
-        static if (size >= 623)
-            enum lag = 11;
-        else static if (size >= 68)
-            enum lag = 7;
-        else static if (size >= 39)
-            enum lag = 5;
-        else
-            enum lag = 3;
-        enum mid = (size - lag) / 2;
         fillState(0x8b);
         immutable count = seed.length.max(size - 1);
         uint* psfmt32 = &(state[0].u32[0]);
-        uint r = func1(psfmt32[idxof!0] ^ psfmt32[idxof!mid] ^ psfmt32[idxof!(size - 1)]);
-        psfmt32[idxof!mid] += r;
+        uint r = func1(psfmt32[idxof!0] ^ psfmt32[imid] ^ psfmt32[tail]);
+        psfmt32[imid] += r;
         r += seed.length;
-        psfmt32[idxof!(mid+lag)] += r;
+        psfmt32[iml] += r;
         psfmt32[idxof!0] = r;
 
         size_t i = 1;
@@ -252,15 +259,14 @@ struct SFMT(sfmt.internal.Parameters parameters)
         }
         idx = 0;
     }
-    ucent_[n] state;
     int idx;
     /// returns true if modification is done
     bool assureLongPeriod()
     {
         uint inner;
         uint* psfmt32 = &(state[0].u32[0]);
-        foreach (i; 0..4)
-            inner ^= psfmt32[i.idxof] & parity[i];
+        static foreach (i; 0..4)
+            inner ^= psfmt32[idxof!i] & parity[i];
         foreach (i; [16, 8, 4, 2, 1])
             inner ^= inner >> i;
         inner &= 1;
@@ -281,6 +287,95 @@ struct SFMT(sfmt.internal.Parameters parameters)
         }
         assert (false, "unreachable?");
     }
+    void dumpState()
+    {
+        debug
+        {
+            import std.stdio;
+            foreach (i, elem; state)
+            {
+                if (i % 2)
+                    stderr.write(" ");
+                stderr.writef("%(%016x-%)", elem.u64[]);
+                if (i % 2)
+                    stderr.writeln;
+            }
+        }
+    }
+}
+struct RunTimeSFMT
+{
+    mixin SFMTMixin;
+    size_t mersenneExponent;
+    ptrdiff_t n, size, lag, mid;
+    size_t tail, imid, iml;
+    size_t m;
+    size_t[4] shifts, masks, parity;
+    ucent_[] state;
+    this (sfmt.internal.Parameters parameters)
+    {
+        mexp(parameters.mersenneExponent);
+        m = parameters.m;
+        shifts = parameters.shifts;
+        masks = parameters.masks;
+        parity = parameters.parity;
+        import std.random : unpredictableSeed;
+        seed(unpredictableSeed);
+    }
+    size_t mexp(size_t value) @property
+    {
+        mersenneExponent = value;
+        n = (value >> 7) + 1;
+        state.length = n;
+        size = n << 2;
+        if (size >= 623)
+            lag = 11;
+        else if (size >= 68)
+            lag = 7;
+        else if (size >= 39)
+            lag = 5;
+        else
+            lag = 3;
+        mid = (size - lag) / 2;
+        tail = (size - 1).idxof;
+        imid = mid.idxof;
+        iml = (mid+lag).idxof;
+        return value;
+    }
+    void recursion(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
+    {
+        immutable
+            sl1 = shifts[0],
+            sl2 = shifts[1],
+            sr1 = shifts[2],
+            sr2 = shifts[3];
+        immutable
+            m0 = masks[idxof!0],
+            m1 = masks[idxof!1],
+            m2 = masks[idxof!2],
+            m3 = masks[idxof!3];
+        auto
+            x = a << sl2,
+            y = c >> sr2;
+        r.u32[0] = a.u32[0] ^ x.u32[0] ^ ((b.u32[0] >> sr1) & m0) ^ y.u32[0] ^ (d.u32[0] << sl1);
+        r.u32[1] = a.u32[1] ^ x.u32[1] ^ ((b.u32[1] >> sr1) & m1) ^ y.u32[1] ^ (d.u32[1] << sl1);
+        r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
+        r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
+    }
+}
+unittest
+{
+    auto ct = SFMT19937(13579u);
+    RunTimeSFMT rt;
+    rt.mexp(ct.mersenneExponent);
+    rt.m = ct.m;
+    rt.shifts = ct.shifts;
+    rt.masks = ct.masks;
+    rt.parity = ct.parity;
+    rt.seed(13579u);
+    foreach (i; 0..1000)
+        assert (ct.next!ulong == rt.next!ulong);
+    stderr.writeln("unittest passed!");
 }
 unittest
 {
