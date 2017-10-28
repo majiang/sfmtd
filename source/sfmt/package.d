@@ -18,6 +18,14 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum mersenneExponent = parameters.mersenneExponent;
     enum n = (mersenneExponent >> 7) + 1;
     enum size = n << 2;
+    static if (size >= 623)
+        enum lag = 11;
+    else static if (size >= 68)
+        enum lag = 7;
+    else static if (size >= 39)
+        enum lag = 5;
+    else
+        enum lag = 3;
     enum m = parameters.m;
     enum shifts = parameters.shifts;
     enum masks = parameters.masks;
@@ -65,14 +73,6 @@ mixin template SFMTMixin()
     }
     void seed(uint[] seed)
     {
-        static if (size >= 623)
-            enum lag = 11;
-        else static if (size >= 68)
-            enum lag = 7;
-        else static if (size >= 39)
-            enum lag = 5;
-        else
-            enum lag = 3;
         enum mid = (size - lag) / 2;
         fillState(0x8b);
         immutable count = seed.length.max(size - 1);
@@ -258,6 +258,49 @@ mixin template SFMTMixin()
             }
         }
         assert (false, "unreachable?");
+    }
+}
+struct RunTimeSFMT
+{
+    mixin SFMTMixin;
+    size_t mersenneExponent;
+    ptrdiff_t n, size, lag;
+    size_t m;
+    size_t[4] shifts, masks, parity;
+    ucent_[] state;
+    size_t mexp(size_t value) @property
+    {
+        mersenneExponent = value;
+        n = value >> 7;
+        size = n << 2;
+        if (size >= 623)
+            lag = 11;
+        else if (size >= 68)
+            lag = 7;
+        else if (size >= 39)
+            lag = 5;
+        else
+            lag = 3;
+    }
+    void recursion(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
+    {
+        immutable
+            sl1 = shifts[0],
+            sl2 = shifts[1],
+            sr1 = shifts[2],
+            sr2 = shifts[3];
+        immutable
+            m0 = masks[idxof!0],
+            m1 = masks[idxof!1],
+            m2 = masks[idxof!2],
+            m3 = masks[idxof!3];
+        auto
+            x = a << sl2,
+            y = c >> sr2;
+        r.u32[0] = a.u32[0] ^ x.u32[0] ^ ((b.u32[0] >> sr1) & m0) ^ y.u32[0] ^ (d.u32[0] << sl1);
+        r.u32[1] = a.u32[1] ^ x.u32[1] ^ ((b.u32[1] >> sr1) & m1) ^ y.u32[1] ^ (d.u32[1] << sl1);
+        r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
+        r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
     }
 }
 
