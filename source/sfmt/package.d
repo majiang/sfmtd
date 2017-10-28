@@ -26,6 +26,7 @@ struct SFMT(sfmt.internal.Parameters parameters)
         enum lag = 5;
     else
         enum lag = 3;
+    enum mid = (size - lag) / 2;
     enum m = parameters.m;
     enum shifts = parameters.shifts;
     enum masks = parameters.masks;
@@ -73,11 +74,18 @@ mixin template SFMTMixin()
     }
     void seed(uint[] seed)
     {
-        enum mid = (size - lag) / 2;
+        static if (__traits (compiles, idxof!size))
+        {
+            enum tail = idxof!(size - 1);
+        }
+        else
+        {
+            immutable tail = (size - 1).idxof;
+        }
         fillState(0x8b);
         immutable count = seed.length.max(size - 1);
         uint* psfmt32 = &(state[0].u32[0]);
-        uint r = func1(psfmt32[idxof!0] ^ psfmt32[idxof!mid] ^ psfmt32[idxof!(size - 1)]);
+        uint r = func1(psfmt32[idxof!0] ^ psfmt32[idxof!mid] ^ psfmt32[tail]);
         psfmt32[idxof!mid] += r;
         r += seed.length;
         psfmt32[idxof!(mid+lag)] += r;
@@ -264,7 +272,7 @@ struct RunTimeSFMT
 {
     mixin SFMTMixin;
     size_t mersenneExponent;
-    ptrdiff_t n, size, lag;
+    ptrdiff_t n, size, lag, mid;
     size_t m;
     size_t[4] shifts, masks, parity;
     ucent_[] state;
@@ -281,6 +289,7 @@ struct RunTimeSFMT
             lag = 5;
         else
             lag = 3;
+        mid = (size - lag) / 2;
     }
     void recursion(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
     {
