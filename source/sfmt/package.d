@@ -1,6 +1,7 @@
 module sfmt;
 
-import std.stdio;
+version (unittest)
+    import std.stdio : stderr;
 static import sfmt.internal;
 import sfmt.internal : func1, func2, idxof, ucent_;
 
@@ -50,6 +51,7 @@ struct SFMT(sfmt.internal.Parameters parameters)
 }
 mixin template SFMTMixin()
 {
+    version (unittest) size_t countPopFront;
     this (uint seed)
     {
         this.seed(seed);
@@ -57,13 +59,6 @@ mixin template SFMTMixin()
     this (uint[] seed)
     {
         this.seed(seed);
-    }
-    void printState()
-    {
-        import std.stdio;
-        "state:".writeln;
-        foreach (row; state[0..2]~state[$-2..$])
-            "%(%08x %)".writefln(row.u32);
     }
     void fillState(ubyte b)
     {
@@ -147,6 +142,7 @@ mixin template SFMTMixin()
     /// ditto.
     void popFront()
     {
+        version (unittest) countPopFront += 1;
         idx += 2;
         if (size <= idx) // in current implementation,
             generateAll; // this is necessary when only popFront is called repeatedly.
@@ -287,21 +283,6 @@ mixin template SFMTMixin()
         }
         assert (false, "unreachable?");
     }
-    void dumpState()
-    {
-        debug
-        {
-            import std.stdio;
-            foreach (i, elem; state)
-            {
-                if (i % 2)
-                    stderr.write(" ");
-                stderr.writef("%(%016x-%)", elem.u64[]);
-                if (i % 2)
-                    stderr.writeln;
-            }
-        }
-    }
 }
 struct RunTimeSFMT
 {
@@ -382,17 +363,60 @@ unittest
     import std.random;
     static assert (isUniformRNG!SFMT19937);
     assert (SFMT19937(4321u).front == 16924766246869039260UL);
+}
+unittest
+{
     import std.algorithm : equal;
     import std.range : take;
-    pragma (msg, "check output of original and range interfaces.");
-    // currently, only normal case is tested: need to test the cases front and popFront are unequally called.
     assert (SFMT19937(4321u).next!(ulong[])(1000).equal(
             SFMT19937(4321u).take(1000)));
-    import std.traits : isIntegral;
-    auto sfmt = SFMT19937(4321u),
-        x = sfmt.uniform01!real,
-        y = sfmt.uniform01!double,
-        z = sfmt.uniform01!float;
+    stderr.writeln("checked next!ulong[] and range functionality");
+}
+
+unittest
+{
+    version (unittest){} else static assert (false);
+    import std.random;
+    auto sfmt = SFMT19937(4321u);
+    foreach (i; 0..1000)
+    {
+        assert (0 <= sfmt.uniform01!real);
+        assert (0 <= sfmt.uniform01!double);
+        assert (0 <= sfmt.uniform01!float);
+        assert (sfmt.uniform01!real < 1);
+        assert (sfmt.uniform01!double < 1);
+        assert (sfmt.uniform01!float < 1);
+    }
+    stderr.writeln("checked uniform01");
+    stderr.writeln(sfmt.countPopFront);
+
+    auto sixThousandth = sfmt.front;
+    sfmt = SFMT19937(4321u);
+    sfmt.front; // this is necessary now: #15
+    foreach (i; 0..6000)
+        sfmt.popFront;
+    stderr.writeln(sfmt.countPopFront);
+    assert (sfmt.front == sixThousandth);
+    stderr.writeln("checked call-only-popFront case");
+}
+unittest
+{
+    void testNext(U, ISFMT)(ISFMT sfmt)
+    {
+        auto copy = sfmt;
+        auto firstBlock = sfmt.next!(U[])(10000);
+        auto secondBlock = sfmt.next!(U[])(10000);
+        U s;
+        foreach (i, b; firstBlock)
+            assert (b == (s = copy.next!U), "mismatch: first[%d] = %0*,8x != %0*,8x".format(i, b, s));
+        foreach (i, b; secondBlock)
+            assert (b == (s = copy.next!U), "mismatch: second[%d;%d] = %0*,8x != %0*,8x".format(i, i+firstBlock.length, b, s));
+    }
+    testNext!ulong(SFMT19937(4321u));
+    testNext!ulong(SFMT19937([uint(5), 4, 3, 2, 1]));
+    testNext!uint(SFMT19937(1234u));
+    testNext!uint(SFMT19937([uint(0x1234), 0x5678, 0x9abc, 0xdef0]));
+    stderr.writeln("checked next!U and next!U[] (U = ulong, uint)");
 }
 
 version (BigEndian)
