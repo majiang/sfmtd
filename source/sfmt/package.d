@@ -187,6 +187,7 @@ mixin template SFMTMixin()
         // array[i-n] == state[i-prepared]
         // array[i] == state[i+n-prepared] == state[i+index]
         immutable size_t[] bounds = [0, 1, n-m, n];
+        // TODO: the usage of foreach and if-continue below is not efficient.
         foreach (i; 0..1)
         {
             if (i < prepared)
@@ -230,8 +231,10 @@ mixin template SFMTMixin()
                 array[i-(n-m)],
                 array[i-2], array[i-1]);
         }
+        // this copy is removed by re-code generateAll.
+        state[] = array[$-n..$];
+        generateAll;
         return array;
-        // state[] is not useful now.
     }
     private void generateAll()
     {
