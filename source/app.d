@@ -11,45 +11,37 @@ void main(string[] args)
         break; case "check":
             if (width & 64)
             {
-                writeln("64bit:");
                 check64!SFMT19937;
             }
             if (width & 32)
             {
-                writeln("32bit:");
                 check32!SFMT19937;
             }
         break; case "check2":
             if (width & 64)
             {
-                writeln("64bit:");
                 check64!SFMT19937_1;
             }
             if (width & 32)
             {
-                writeln("32bit:");
                 check32!SFMT19937_1;
             }
         break; case "check11213":
             if (width & 64)
             {
-                writeln("64bit:");
                 check64!SFMT11213;
             }
             if (width & 32)
             {
-                writeln("32bit:");
                 check32!SFMT11213;
             }
         break; case "check11213-2":
             if (width & 64)
             {
-                writeln("64bit:");
                 check64!SFMT11213_1;
             }
             if (width & 32)
             {
-                writeln("32bit:");
                 check32!SFMT11213_1;
             }
         break; case "speed":
@@ -70,12 +62,14 @@ void main(string[] args)
 void check32(ISFMT)()
 {
     ISFMT.id.writeln;
+    "32 bit generated randoms".writeln;
     uint(1234).check!(uint, ISFMT)(10000, 1000, 10000, 700); // checked!
     [uint(0x1234), 0x5678, 0x9abc, 0xdef0].check!(uint, ISFMT)(10000, 1000, 10000, 700);
 }
 void check64(ISFMT)()
 {
     ISFMT.id.writeln;
+    "64 bit generated randoms".writeln;
     uint(4321).check!(ulong, ISFMT)(5000, 1000, 5000, 700);
     [uint(5), 4, 3, 2, 1].check!(ulong, ISFMT)(5000, 1000, 5000, 700);
 }
@@ -92,37 +86,15 @@ void check(U, ISFMT, SEED)(SEED seed, size_t firstSize, size_t print, size_t sec
         enum columns = 3;
     }
 
-    import std.exception : enforce;
-    import std.string : format;
+    import std.range : chunks, take;
 
     static if (is (SEED == uint))
         "init_gen_rand__________".writeln;
     static if (is (SEED == uint[]))
         "init_by_array__________".writeln;
     auto sfmt = ISFMT(seed);
-    auto first = sfmt.next!(U[])(firstSize);
-    auto second = sfmt.next!(U[])(secondSize);
-    sfmt.seed(seed);
-    foreach (i, a; first)
-    {
-        auto r = sfmt.next!U;
-        (r == a).enforce("mismatch at %d first:%x gen:%x".format(i, a, r));
-        if (print <= i)
-            continue;
-        (fmt~" ").writef(r);
-        if ((i + 1) % columns)
-            continue;
-        writeln;
-    }
-    if (print % columns)
-        writeln;
-    foreach (i, a; second)
-    {
-        auto r = sfmt.next!U;
-        (r == a).enforce("mismatch at %d second:%x gen:%x".format(i, a, r));
-        if (check == i)
-            break;
-    }
+    auto toPrint = sfmt.next!(U[])(sfmt.size*2).take(print).chunks(columns);
+    ("%(%("~fmt~" %)\n%)").writefln(toPrint);
 }
 import std.datetime.stopwatch;
 import std.random;
