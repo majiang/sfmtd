@@ -78,6 +78,7 @@ mixin template SFMTMixin()
             psfmt32[i.idxof] = 1812433253U * (psfmt32[(i - 1).idxof] ^ (psfmt32[(i - 1).idxof] >> 30)) + i;
         idx = size;
         assureLongPeriod;
+        generateAll;
     }
     void seed(uint[] seed)
     {
@@ -129,14 +130,13 @@ mixin template SFMTMixin()
         }
         idx = size;
         assureLongPeriod;
+        generateAll;
     }
     /// input range interface.
     ulong front() @property
     {
         assert (idx % 2 == 0, "out of alignment");
         ulong* psfmt64 = &(state[0].u64[0]);
-        if (size <= idx) // in current implementation,
-            generateAll; // this is necessary for first call.
         return psfmt64[idx / 2];
     }
     /// ditto.
@@ -148,26 +148,20 @@ mixin template SFMTMixin()
             generateAll; // this is necessary when only popFront is called repeatedly.
     }
     version (Big32){} else
-    T next(T)()
-        if (is (T == ulong))
+    T frontPop(T : ulong)()
     {
-        ulong* psfmt64 = &(state[0].u64[0]);
-        assert (idx % 2 == 0, "out of alignment");
-        if (size <= idx)
-            generateAll;
-        immutable r = psfmt64[idx / 2];
-        idx += 2;
-        return r;
+        auto ret = front;
+        popFront;
+        return ret;
     }
     version (Big64){} else
-    T next(T)()
-        if (is (T == uint))
+    T frontPop(T : uint)()
     {
         uint* psfmt32 = &(state[0].u32[0]);
-        if (size <= idx)
-            generateAll;
         immutable r = psfmt32[idx];
         idx += 1;
+        if (size <= idx)
+            generateAll;
         return r;
     }
     T next(T)(size_t size)
@@ -179,55 +173,65 @@ mixin template SFMTMixin()
     in
     {
         assert (n <= array.length);
+        assert (idx % 4 == 0, "out of alignment");
     }
     body
     {
-        immutable size = array.length;
-        recursion(
-            array[0], state[0],
-            state[0 + m],
-            state[n - 2], state[n - 1]);
-        recursion(
-            array[1], state[1],
-            state[1 + m],
-            state[n - 1], array[0]);
-
-        foreach (i; 2 .. n-m)
+        immutable size_t
+            index = idx / 4,
+            size = array.length;
+        immutable size_t
+            prepared = n-index;
+        array[0..prepared] = state[index..$];
+        // array[prepared-j] == state[n-j]
+        // array[i-n] == state[i-prepared]
+        // array[i] == state[i+n-prepared] == state[i+index]
+        immutable size_t[] bounds = [0, 1, n-m, n];
+        foreach (i; 0..1)
+        {
+            if (i < prepared)
+                continue;
+            recursion(
+                array[i], state[i-prepared],
+                state[i-(prepared-m)],
+                state[i+index-2], array[i+index-1]);
+        }
+        foreach (i; 1..2)
+        {
+            if (i < prepared)
+                continue;
+            recursion(
+                array[i], state[i-prepared],
+                state[i-(prepared-m)],
+                state[i+index-2], array[i-1]);
+        }
+        foreach (i; 2..n-m)
+        {
+            if (i < prepared)
+                continue;
+            recursion(
+                array[i], state[i-prepared],
+                state[i-(prepared-m)],
+                array[i-2], array[i-1]);
+        }
+        foreach (i; n-m..n)
+        {
+            if (i < prepared)
+                continue;
+            recursion(
+                array[i], state[i-prepared],
+                array[i-(n-m)],
+                array[i-2], array[i-1]);
+        }
+        foreach (i; n .. size)
         {
             recursion(
-                array[i], state[i],
-                state[i + m],
-                array[i - 2], array[i - 1]);
-        }
-        foreach (i; n-m .. n)
-        {
-            recursion(
-                array[i], state[i],
-                array[i + m - n],
-                array[i - 2], array[i - 1]);
-        }
-        foreach (i; n .. size-n)
-        {
-            recursion(
-                array[i], array[i - n],
-                array[i + m - n],
-                array[i - 2], array[i - 1]);
-        }
-        foreach (j; 0..ptrdiff_t(2*n-size).max(0))
-        {
-            state[j] = array[j + size - n];
-        }
-        size_t j = ptrdiff_t(2*n-size).max(0);
-        foreach (i; size-n..size)
-        {
-            recursion(
-                array[i], array[i - n],
-                array[i + m - n],
-                array[i - 2], array[i - 1]);
-            state[j] = array[i];
-            j += 1;
+                array[i], array[i-n],
+                array[i-(n-m)],
+                array[i-2], array[i-1]);
         }
         return array;
+        // state[] is not useful now.
     }
     private void generateAll()
     {
@@ -355,8 +359,8 @@ unittest
     rt.parity = ct.parity;
     rt.seed(13579u);
     foreach (i; 0..1000)
-        assert (ct.next!ulong == rt.next!ulong);
-    stderr.writeln("unittest passed!");
+        assert (ct.frontPop!ulong == rt.frontPop!ulong);
+    stderr.writeln("checked compile time and run time");
 }
 unittest
 {
@@ -392,7 +396,6 @@ unittest
 
     auto sixThousandth = sfmt.front;
     sfmt = SFMT19937(4321u);
-    sfmt.front; // this is necessary now: #15
     foreach (i; 0..6000)
         sfmt.popFront;
     stderr.writeln(sfmt.countPopFront);
@@ -408,9 +411,9 @@ unittest
         auto secondBlock = sfmt.next!(U[])(10000);
         U s;
         foreach (i, b; firstBlock)
-            assert (b == (s = copy.next!U), "mismatch: first[%d] = %0*,8x != %0*,8x".format(i, b, s));
+            assert (b == (s = copy.frontPop!U), "mismatch: first[%d] = %0*,8x != %0*,8x".format(i, U.sizeof>>1, b, U.sizeof>>1, s));
         foreach (i, b; secondBlock)
-            assert (b == (s = copy.next!U), "mismatch: second[%d;%d] = %0*,8x != %0*,8x".format(i, i+firstBlock.length, b, s));
+            assert (b == (s = copy.frontPop!U), "mismatch: second[%d;%d] = %0*,8x != %0*,8x".format(i, i+firstBlock.length, U.sizeof>>1, b, U.sizeof>>1, s));
     }
     testNext!ulong(SFMT19937(4321u));
     testNext!ulong(SFMT19937([uint(5), 4, 3, 2, 1]));
