@@ -102,8 +102,6 @@ void check(U, ISFMT, SEED)(SEED seed, size_t firstSize, size_t print, size_t sec
     auto sfmt = ISFMT(seed);
     auto first = sfmt.next!(U[])(firstSize);
     auto second = sfmt.next!(U[])(secondSize);
-    assert (first.length == firstSize);
-    assert (second.length == secondSize);
     sfmt.seed(seed);
     foreach (i, a; first)
     {
