@@ -187,38 +187,32 @@ mixin template SFMTMixin()
         // array[i-n] == state[i-prepared]
         // array[i] == state[i+n-prepared] == state[i+index]
         immutable size_t[] bounds = [0, 1, n-m, n];
-        // TODO: the usage of foreach and if-continue below is not efficient.
-        foreach (i; 0..1)
+        if (prepared <= 0)
         {
-            if (i < prepared)
-                continue;
+            immutable i = 0;
             recursion(
                 array[i], state[i-prepared],
                 state[i-(prepared-m)],
                 state[i+index-2], array[i+index-1]);
         }
-        foreach (i; 1..2)
+        if (prepared <= 1)
         {
-            if (i < prepared)
-                continue;
+            immutable i = 1;
             recursion(
                 array[i], state[i-prepared],
                 state[i-(prepared-m)],
                 state[i+index-2], array[i-1]);
         }
-        foreach (i; 2..n-m)
+        if (prepared <= n-m-1)
+        foreach (i; prepared..n-m)
         {
-            if (i < prepared)
-                continue;
             recursion(
                 array[i], state[i-prepared],
                 state[i-(prepared-m)],
                 array[i-2], array[i-1]);
         }
-        foreach (i; n-m..n)
+        foreach (i; prepared.max(n-m)..n)
         {
-            if (i < prepared)
-                continue;
             recursion(
                 array[i], state[i-prepared],
                 array[i-(n-m)],
