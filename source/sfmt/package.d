@@ -18,7 +18,6 @@ static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
     }
     mixin ("alias SFMT%d = SFMT%d_0;".format(mexp, mexp));
 }
-RunTimeSFMT[] rtSFMTs;
 static this ()
 {
     static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
@@ -31,21 +30,24 @@ static this ()
         }
     }
 }
+RunTimeSFMT[] rtSFMTs;///
+///
 unittest
 {
     assert (rtSFMTs.length == 192);
 }
 
+///
 struct SFMT(sfmt.internal.Parameters parameters)
 {
     private alias params = parameters;
-    enum isUniformRandom = true;
-    enum empty = false;
-    enum min = ulong.min;
-    enum max = ulong.max;
-    enum mersenneExponent = parameters.mersenneExponent;
-    enum n = (mersenneExponent >> 7) + 1;
-    enum size = n << 2;
+    enum isUniformRandom = true;///
+    enum empty = false;///
+    enum min = ulong.min;///
+    enum max = ulong.max;///
+    enum mersenneExponent = parameters.mersenneExponent;///
+    enum n = (mersenneExponent >> 7) + 1;///
+    enum size = n << 2;///
     static if (size >= 623)
         enum lag = 11;
     else static if (size >= 68)
@@ -58,10 +60,10 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum tail = idxof!(size - 1);
     enum imid = idxof!mid;
     enum iml = idxof!(mid+lag);
-    enum m = parameters.m;
-    enum shifts = parameters.shifts;
-    enum masks = parameters.masks;
-    enum parity = parameters.parity;
+    enum m = parameters.m;///
+    enum shifts = parameters.shifts;///
+    enum masks = parameters.masks;///
+    enum parity = parameters.parity;///
     alias recursion = sfmt.internal.recursion!(shifts, masks);
     ucent_[n] state;
     mixin SFMTMixin;
@@ -69,15 +71,17 @@ struct SFMT(sfmt.internal.Parameters parameters)
                 mersenneExponent, m,
                 shifts[],
                 masks[]
-                );
+                );///
 }
+///
 mixin template SFMTMixin()
 {
-    version (unittest) size_t countPopFront;
+    ///
     this (uint seed)
     {
         this.seed(seed);
     }
+    ///
     this (uint[] seed)
     {
         this.seed(seed);
@@ -91,7 +95,7 @@ mixin template SFMTMixin()
         x.u32[1..$] = x.u32[0];
         state[] = x;
     }
-    // checked
+    ///
     void seed(uint seed)
     {
         uint* psfmt32 = &(state[0].u32[0]);
@@ -102,6 +106,7 @@ mixin template SFMTMixin()
         assureLongPeriod;
         generateAll;
     }
+    ///
     void seed(uint[] seed)
     {
         fillState(0x8b);
@@ -161,23 +166,22 @@ mixin template SFMTMixin()
         ulong* psfmt64 = &(state[0].u64[0]);
         return psfmt64[idx / 2];
     }
-    /// ditto.
+    /// ditto
     void popFront()
     {
-        version (unittest) countPopFront += 1;
         idx += 2;
         if (size <= idx) // in current implementation,
             generateAll; // this is necessary when only popFront is called repeatedly.
     }
     version (Big32){} else
-    T frontPop(T : ulong)()
+    T frontPop(T : ulong)()///
     {
         auto ret = front;
         popFront;
         return ret;
     }
     version (Big64){} else
-    T frontPop(T : uint)()
+    T frontPop(T : uint)()///
     {
         uint* psfmt32 = &(state[0].u32[0]);
         immutable r = psfmt32[idx];
@@ -186,6 +190,7 @@ mixin template SFMTMixin()
             generateAll;
         return r;
     }
+    ///
     T next(T)(size_t size)
         if (is (T == ulong[]) || is (T == uint[]))
     {
@@ -332,15 +337,17 @@ mixin template SFMTMixin()
         assert (false, "unreachable?");
     }
 }
+///
 struct RunTimeSFMT
 {
     mixin SFMTMixin;
-    size_t mersenneExponent;
-    ptrdiff_t n, size, lag, mid;
+    size_t mersenneExponent;///
+    ptrdiff_t n/***/, size/***/, lag, mid;
     size_t tail, imid, iml;
-    size_t m;
-    size_t[4] shifts, masks, parity;
+    size_t m;///
+    size_t[4] shifts/***/, masks/***/, parity/***/;
     ucent_[] state;
+    ///
     this (sfmt.internal.Parameters parameters)
     {
         mexp(parameters.mersenneExponent);
@@ -351,6 +358,7 @@ struct RunTimeSFMT
         import std.random : unpredictableSeed;
         seed(unpredictableSeed);
     }
+    ///
     size_t mexp(size_t value) @property
     {
         mersenneExponent = value;
@@ -391,6 +399,7 @@ struct RunTimeSFMT
         r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
         r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
     }
+    ///
     string id()
     {
         return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
@@ -444,13 +453,11 @@ unittest
         assert (sfmt.uniform01!float < 1);
     }
     stderr.writeln("checked uniform01");
-    stderr.writeln(sfmt.countPopFront);
 
     auto sixThousandth = sfmt.front;
     sfmt = SFMT19937(4321u);
     foreach (i; 0..6000)
         sfmt.popFront;
-    stderr.writeln(sfmt.countPopFront);
     assert (sfmt.front == sixThousandth);
     stderr.writeln("checked call-only-popFront case");
 }

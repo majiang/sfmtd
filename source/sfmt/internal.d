@@ -1,4 +1,4 @@
-module sfmt.internal;
+module sfmt.internal; ///
 
 version (Big64)
     enum idxof(int i) = i ^ 1;
@@ -13,6 +13,7 @@ int idxof(int i)
         return i;
 }
 
+/// 128-bit integer.
 union ucent_
 {
     ulong[2] u64;
@@ -42,14 +43,14 @@ union ucent_
 
 /** Recursion function.
 
-The index below is modulo n for generateAll().
+The index below is modulo <var>n</var> for generateAll$(LPAREN)$(RPAREN).
 
 Params:
-    r = state[i]
-    a = state[i-n]
-    b = state[i-(n-m)]
-    c = state[i-2]
-    d = state[i-1]
+    r = state[<var>i</var>]
+    a = state[<var>i</var>-<var>n</var>]
+    b = state[<var>i</var>-$(LPAREN)<var>n</var>-<var>m</var>$(RPAREN)]
+    c = state[<var>i</var>-2]
+    d = state[<var>i</var>-1]
 */
 void recursion(uint[4] shifts, uint[4] masks)(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
 {
@@ -70,16 +71,19 @@ void recursion(uint[4] shifts, uint[4] masks)(ref ucent_ r, ref ucent_ a, ref uc
     r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
 }
 
+/// internal functions for seeding.
 uint func1(uint x)
 {
     return (x ^ (x >> 27)) * uint(1664525);
 }
 
+/// ditto
 uint func2(uint x)
 {
     return (x ^ (x >> 27)) * uint(1566083941);
 }
 
+/// read parameter from file (compile time).
 auto parseParameters(int SFMT_mersenneExponent, size_t row)()
 {
     import std.algorithm, std.format, std.range;
@@ -88,12 +92,14 @@ auto parseParameters(int SFMT_mersenneExponent, size_t row)()
         r.popFront;
     return Parameters(r.front.split(","));
 }
+/// parameters for SFMT.
 struct Parameters
 {
     import std.conv, std.format;
-    int mersenneExponent, DD;
-    ptrdiff_t m;
-    uint[4] shifts, masks, parity;
+    int mersenneExponent; ///
+    int DD;
+    ptrdiff_t m; ///
+    uint[4] shifts, /***/masks, /***/parity; ///
     this (string[] args)
     {
         mersenneExponent = args[0].to!int;
@@ -105,14 +111,6 @@ struct Parameters
             masks[i] = args[7+i].to!uint(16);
             parity[i] = args[11+i].to!uint(16);
         }
-    }
-    string id()
-    {
-        return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
-                mersenneExponent, m,
-                shifts[],
-                masks[]
-                );
     }
 }
 
