@@ -18,9 +18,27 @@ static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
     }
     mixin ("alias SFMT%d = SFMT%d_0;".format(mexp, mexp));
 }
+RunTimeSFMT[] rtSFMTs;
+static this ()
+{
+    static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
+    {
+        import std.range : iota;
+        import std.format : format;
+        static foreach (row; 32.iota)
+        {
+            rtSFMTs ~= RunTimeSFMT(mixin ("SFMT%d_%d".format(mexp, row)).params);
+        }
+    }
+}
+unittest
+{
+    assert (rtSFMTs.length == 192);
+}
 
 struct SFMT(sfmt.internal.Parameters parameters)
 {
+    private alias params = parameters;
     enum isUniformRandom = true;
     enum empty = false;
     enum min = ulong.min;
