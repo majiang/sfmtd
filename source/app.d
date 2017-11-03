@@ -46,20 +46,20 @@ void check32(ISFMT)(ISFMT sfmt, File target)
     target.writeln(sfmt.id);
     target.writeln("32 bit generated randoms");
     sfmt.seed(uint(1234));
-    sfmt.check!uint(10000, 1000, 10000, 700, target); // checked!
+    sfmt.check!(uint, uint)(10000, 1000, 10000, 700, target); // checked!
     sfmt.seed([uint(0x1234), 0x5678, 0x9abc, 0xdef0]);
-    sfmt.check!uint(10000, 1000, 10000, 700, target);
+    sfmt.check!(uint, uint[])(10000, 1000, 10000, 700, target);
 }
 void check64(ISFMT)(ISFMT sfmt, File target)
 {
     target.writeln(sfmt.id);
     target.writeln("64 bit generated randoms");
     sfmt.seed(uint(4321));
-    sfmt.check!ulong(5000, 1000, 5000, 700, target);
+    sfmt.check!(ulong, uint)(5000, 1000, 5000, 700, target);
     sfmt.seed([uint(5), 4, 3, 2, 1]);
-    sfmt.check!ulong(5000, 1000, 5000, 700, target);
+    sfmt.check!(ulong, uint[])(5000, 1000, 5000, 700, target);
 }
-void check(U, ISFMT)(ISFMT sfmt, size_t firstSize, size_t print, size_t secondSize, size_t check, File target)
+void check(U, SEED, ISFMT)(ISFMT sfmt, size_t firstSize, size_t print, size_t secondSize, size_t check, File target)
 {
     static if (is (U == uint))
     {
@@ -75,9 +75,9 @@ void check(U, ISFMT)(ISFMT sfmt, size_t firstSize, size_t print, size_t secondSi
     import std.range : chunks, take;
 
     static if (is (SEED == uint))
-        "init_gen_rand__________".writeln;
+        target.writeln("init_gen_rand__________");
     static if (is (SEED == uint[]))
-        "init_by_array__________".writeln;
+        target.writeln("init_by_array__________");
     auto toPrint = sfmt.next!(U[])(sfmt.size*2).take(print).chunks(columns);
     target.writefln("%(%("~fmt~" %)\n%)", toPrint);
 }
