@@ -62,10 +62,14 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum shifts = parameters.shifts;
     enum masks = parameters.masks;
     enum parity = parameters.parity;
-    enum id = parameters.id;
     alias recursion = sfmt.internal.recursion!(shifts, masks);
     ucent_[n] state;
     mixin SFMTMixin;
+    enum id = "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
+                mersenneExponent, m,
+                shifts[],
+                masks[]
+                );
 }
 mixin template SFMTMixin()
 {
@@ -386,6 +390,14 @@ struct RunTimeSFMT
         r.u32[1] = a.u32[1] ^ x.u32[1] ^ ((b.u32[1] >> sr1) & m1) ^ y.u32[1] ^ (d.u32[1] << sl1);
         r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
         r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
+    }
+    string id()
+    {
+        return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
+                mersenneExponent, m,
+                shifts[],
+                masks[]
+                );
     }
 }
 unittest

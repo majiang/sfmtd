@@ -2,47 +2,29 @@ import std.stdio;
 
 void main(string[] args)
 {
-    import sfmt;
-    import std.format, std.getopt;
+    import sfmt : rtSFMTs, SFMT19937;
+    import std.exception, std.format, std.getopt;
+    import std.algorithm;
     size_t width;
-    args.getopt("width|w", &width);
+    size_t mexp;
+    size_t row;
+    args.getopt("width|w", &width, "mexp|x", &mexp, "index|i", &row);
+    enum mexps = [size_t(607), 1279, 2281, 4253, 11213, 19937];
+    auto ix = mexps.length - mexps.find(mexp).length;
+    (ix < mexps.length).enforce("mexp must be one of %(%d, %).".format(mexps));
+    (row < 32).enforce("index must be less than 32.");
     switch (args[1])
     {
         break; case "check":
+            auto sfmt = rtSFMTs[32*ix+row];
+            auto target = (2 < args.length) ? File(args[2], "w") : stdout;
             if (width & 64)
             {
-                check64!SFMT19937;
+                sfmt.check64(target);
             }
             if (width & 32)
             {
-                check32!SFMT19937;
-            }
-        break; case "check2":
-            if (width & 64)
-            {
-                check64!SFMT19937_1;
-            }
-            if (width & 32)
-            {
-                check32!SFMT19937_1;
-            }
-        break; case "check11213":
-            if (width & 64)
-            {
-                check64!SFMT11213;
-            }
-            if (width & 32)
-            {
-                check32!SFMT11213;
-            }
-        break; case "check11213-2":
-            if (width & 64)
-            {
-                check64!SFMT11213_1;
-            }
-            if (width & 32)
-            {
-                check32!SFMT11213_1;
+                sfmt.check32(target);
             }
         break; case "speed":
             if (width & 64)
@@ -59,21 +41,25 @@ void main(string[] args)
             throw new Exception("Unknown command '%s'".format(args[1]));
     }
 }
-void check32(ISFMT)()
+void check32(ISFMT)(ISFMT sfmt, File target)
 {
-    ISFMT.id.writeln;
-    "32 bit generated randoms".writeln;
-    uint(1234).check!(uint, ISFMT)(10000, 1000, 10000, 700); // checked!
-    [uint(0x1234), 0x5678, 0x9abc, 0xdef0].check!(uint, ISFMT)(10000, 1000, 10000, 700);
+    target.writeln(sfmt.id);
+    target.writeln("32 bit generated randoms");
+    sfmt.seed(uint(1234));
+    sfmt.check!uint(10000, 1000, 10000, 700, target); // checked!
+    sfmt.seed([uint(0x1234), 0x5678, 0x9abc, 0xdef0]);
+    sfmt.check!uint(10000, 1000, 10000, 700, target);
 }
-void check64(ISFMT)()
+void check64(ISFMT)(ISFMT sfmt, File target)
 {
-    ISFMT.id.writeln;
-    "64 bit generated randoms".writeln;
-    uint(4321).check!(ulong, ISFMT)(5000, 1000, 5000, 700);
-    [uint(5), 4, 3, 2, 1].check!(ulong, ISFMT)(5000, 1000, 5000, 700);
+    target.writeln(sfmt.id);
+    target.writeln("64 bit generated randoms");
+    sfmt.seed(uint(4321));
+    sfmt.check!ulong(5000, 1000, 5000, 700, target);
+    sfmt.seed([uint(5), 4, 3, 2, 1]);
+    sfmt.check!ulong(5000, 1000, 5000, 700, target);
 }
-void check(U, ISFMT, SEED)(SEED seed, size_t firstSize, size_t print, size_t secondSize, size_t check)
+void check(U, ISFMT)(ISFMT sfmt, size_t firstSize, size_t print, size_t secondSize, size_t check, File target)
 {
     static if (is (U == uint))
     {
@@ -92,9 +78,8 @@ void check(U, ISFMT, SEED)(SEED seed, size_t firstSize, size_t print, size_t sec
         "init_gen_rand__________".writeln;
     static if (is (SEED == uint[]))
         "init_by_array__________".writeln;
-    auto sfmt = ISFMT(seed);
     auto toPrint = sfmt.next!(U[])(sfmt.size*2).take(print).chunks(columns);
-    ("%(%("~fmt~" %)\n%)").writefln(toPrint);
+    target.writefln("%(%("~fmt~" %)\n%)", toPrint);
 }
 import std.datetime.stopwatch;
 import std.random;
@@ -131,7 +116,7 @@ auto speedSFMT(U, ISFMT)(ISFMT sfmt, void[] _res)
     auto sw = StopWatch(AutoStart.yes);
     foreach (i; 0..res.length)
     {
-        res[i] = sfmt.next!U;
+        res[i] = sfmt.frontPop!U;
     }
     return sw.peek.total!"msecs";
 }
