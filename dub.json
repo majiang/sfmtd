@@ -14,12 +14,12 @@
         {
             "name": "with-32",
             "targetType": "executable",
-            "versions": ["MT19937", "With32bit"]
+            "versions": ["With32bit"]
         },
         {
             "name": "only-64",
             "targetType": "executable",
-            "versions": ["MT19937", "Only64bit"]
+            "versions": ["Only64bit"]
         }
     ]
 }
