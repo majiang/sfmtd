@@ -40,7 +40,17 @@ union ucent_
     }
 }
 
-// checked
+/** Recursion function.
+
+The index below is modulo n for generateAll().
+
+Params:
+    r = state[i]
+    a = state[i-n]
+    b = state[i-(n-m)]
+    c = state[i-2]
+    d = state[i-1]
+*/
 void recursion(uint[4] shifts, uint[4] masks)(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
 {
     enum sl1 = shifts[0];

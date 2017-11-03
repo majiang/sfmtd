@@ -183,28 +183,32 @@ mixin template SFMTMixin()
         immutable size_t
             prepared = n-index;
         array[0..prepared] = state[index..$];
+        scope (failure)
+        {
+            import std.stdio;
+            stderr.writefln("index:%d, size:%d, prepared:%d, n-m:%d, n:%d",
+                index, size, prepared, n-m, n);
+        }
         // array[prepared-j] == state[n-j]
         // array[i-n] == state[i-prepared]
         // array[i] == state[i+n-prepared] == state[i+index]
         immutable size_t[] bounds = [0, 1, n-m, n];
         if (prepared <= 0)
         {
-            immutable i = 0;
             recursion(
-                array[i], state[i-prepared],
-                state[i-(prepared-m)],
-                state[i+index-2], array[i+index-1]);
+                array[0], state[0],
+                state[m],
+                state[index-2], array[index-1]);
         }
         if (prepared <= 1)
         {
-            immutable i = 1;
             recursion(
-                array[i], state[i-prepared],
-                state[i-(prepared-m)],
-                state[i+index-2], array[i-1]);
+                array[1], state[1-prepared],
+                state[1+m-prepared],
+                state[index-1], array[0]);
         }
         if (prepared <= n-m-1)
-        foreach (i; prepared..n-m)
+        foreach (i; prepared.max(2)..n-m)
         {
             recursion(
                 array[i], state[i-prepared],
@@ -225,9 +229,30 @@ mixin template SFMTMixin()
                 array[i-(n-m)],
                 array[i-2], array[i-1]);
         }
-        // this copy is removed by re-code generateAll.
-        state[] = array[$-n..$];
-        generateAll;
+        // array[$-n+i] == state[i-n]
+        // array[$+i] == state[i]
+        recursion(
+            state[0], array[$-n],
+            array[$-(n-m)],
+            array[$-2], array[$-1]);
+        recursion(
+            state[1], array[$+1-n],
+            array[$+1-(n-m)],
+            array[$-1], state[0]);
+        foreach (i; 2..(n-m))
+        {
+            recursion(
+                state[i], array[$+i-n],
+                array[$+i-(n-m)],
+                state[i-2], state[i-1]);
+        }
+        foreach (i; (n-m)..n)
+        {
+            recursion(
+                state[i], array[$+i-n],
+                state[i-(n-m)],
+                state[i-2], state[i-1]);
+        }
         return array;
     }
     private void generateAll()
@@ -417,6 +442,26 @@ unittest
     testNext!uint(SFMT19937(1234u));
     testNext!uint(SFMT19937([uint(0x1234), 0x5678, 0x9abc, 0xdef0]));
     stderr.writeln("checked next!U and next!U[] (U = ulong, uint)");
+}
+unittest
+{
+    void testPopFrontThenBlock(size_t firstSize, size_t secondSize)
+    {
+        import std.range : drop, take;
+        import std.algorithm : equal;
+        auto sfmt = SFMT19937(4321u);
+        foreach (i; 0..firstSize*2)
+            sfmt.popFront;
+        auto a = sfmt.next!(ulong[])(secondSize*2);
+        auto b = SFMT19937(4321u).drop(firstSize*2).take(secondSize*2);
+        assert (a.equal(b));
+    }
+    foreach (i; 0..SFMT19937.n)
+        foreach (j; SFMT19937.n..SFMT19937.n*2)
+        {
+            testPopFrontThenBlock(i, j);
+        }
+    stderr.writeln("checked next!U[]");
 }
 
 version (BigEndian)
