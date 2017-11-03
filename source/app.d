@@ -72,13 +72,14 @@ void check(U, SEED, ISFMT)(ISFMT sfmt, size_t firstSize, size_t print, size_t se
         enum columns = 3;
     }
 
-    import std.range : chunks, take;
+    import std.algorithm : max;
+    import std.range : chunks, takeExactly;
 
     static if (is (SEED == uint))
         target.writeln("init_gen_rand__________");
     static if (is (SEED == uint[]))
         target.writeln("init_by_array__________");
-    auto toPrint = sfmt.next!(U[])(sfmt.size*2).take(print).chunks(columns);
+    auto toPrint = sfmt.next!(U[])(print.max(sfmt.size*2)).takeExactly(print).chunks(columns);
     target.writefln("%(%("~fmt~" %)\n%)", toPrint);
 }
 import std.datetime.stopwatch;
