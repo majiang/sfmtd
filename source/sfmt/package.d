@@ -1,6 +1,7 @@
 module sfmt;
 
-import std.stdio;
+version (unittest)
+    import std.stdio : stderr;
 static import sfmt.internal;
 import sfmt.internal : func1, func2, idxof, ucent_;
 
@@ -17,9 +18,27 @@ static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
     }
     mixin ("alias SFMT%d = SFMT%d_0;".format(mexp, mexp));
 }
+RunTimeSFMT[] rtSFMTs;
+static this ()
+{
+    static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
+    {
+        import std.range : iota;
+        import std.format : format;
+        static foreach (row; 32.iota)
+        {
+            rtSFMTs ~= RunTimeSFMT(mixin ("SFMT%d_%d".format(mexp, row)).params);
+        }
+    }
+}
+unittest
+{
+    assert (rtSFMTs.length == 192);
+}
 
 struct SFMT(sfmt.internal.Parameters parameters)
 {
+    private alias params = parameters;
     enum isUniformRandom = true;
     enum empty = false;
     enum min = ulong.min;
@@ -43,13 +62,18 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum shifts = parameters.shifts;
     enum masks = parameters.masks;
     enum parity = parameters.parity;
-    enum id = parameters.id;
     alias recursion = sfmt.internal.recursion!(shifts, masks);
     ucent_[n] state;
     mixin SFMTMixin;
+    enum id = "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
+                mersenneExponent, m,
+                shifts[],
+                masks[]
+                );
 }
 mixin template SFMTMixin()
 {
+    version (unittest) size_t countPopFront;
     this (uint seed)
     {
         this.seed(seed);
@@ -57,13 +81,6 @@ mixin template SFMTMixin()
     this (uint[] seed)
     {
         this.seed(seed);
-    }
-    void printState()
-    {
-        import std.stdio;
-        "state:".writeln;
-        foreach (row; state[0..2]~state[$-2..$])
-            "%(%08x %)".writefln(row.u32);
     }
     void fillState(ubyte b)
     {
@@ -83,6 +100,7 @@ mixin template SFMTMixin()
             psfmt32[i.idxof] = 1812433253U * (psfmt32[(i - 1).idxof] ^ (psfmt32[(i - 1).idxof] >> 30)) + i;
         idx = size;
         assureLongPeriod;
+        generateAll;
     }
     void seed(uint[] seed)
     {
@@ -134,44 +152,38 @@ mixin template SFMTMixin()
         }
         idx = size;
         assureLongPeriod;
+        generateAll;
     }
     /// input range interface.
     ulong front() @property
     {
         assert (idx % 2 == 0, "out of alignment");
         ulong* psfmt64 = &(state[0].u64[0]);
-        if (size <= idx) // in current implementation,
-            generateAll; // this is necessary for first call.
         return psfmt64[idx / 2];
     }
     /// ditto.
     void popFront()
     {
+        version (unittest) countPopFront += 1;
         idx += 2;
         if (size <= idx) // in current implementation,
             generateAll; // this is necessary when only popFront is called repeatedly.
     }
     version (Big32){} else
-    T next(T)()
-        if (is (T == ulong))
+    T frontPop(T : ulong)()
     {
-        ulong* psfmt64 = &(state[0].u64[0]);
-        assert (idx % 2 == 0, "out of alignment");
-        if (size <= idx)
-            generateAll;
-        immutable r = psfmt64[idx / 2];
-        idx += 2;
-        return r;
+        auto ret = front;
+        popFront;
+        return ret;
     }
     version (Big64){} else
-    T next(T)()
-        if (is (T == uint))
+    T frontPop(T : uint)()
     {
         uint* psfmt32 = &(state[0].u32[0]);
-        if (size <= idx)
-            generateAll;
         immutable r = psfmt32[idx];
         idx += 1;
+        if (size <= idx)
+            generateAll;
         return r;
     }
     T next(T)(size_t size)
@@ -183,53 +195,85 @@ mixin template SFMTMixin()
     in
     {
         assert (n <= array.length);
+        assert (idx % 4 == 0, "out of alignment");
     }
     body
     {
-        immutable size = array.length;
+        immutable size_t
+            index = idx / 4,
+            size = array.length;
+        immutable size_t
+            prepared = n-index;
+        array[0..prepared] = state[index..$];
+        scope (failure)
+        {
+            import std.stdio;
+            stderr.writefln("index:%d, size:%d, prepared:%d, n-m:%d, n:%d",
+                index, size, prepared, n-m, n);
+        }
+        // array[prepared-j] == state[n-j]
+        // array[i-n] == state[i-prepared]
+        // array[i] == state[i+n-prepared] == state[i+index]
+        immutable size_t[] bounds = [0, 1, n-m, n];
+        if (prepared <= 0)
+        {
+            recursion(
+                array[0], state[0],
+                state[m],
+                state[index-2], array[index-1]);
+        }
+        if (prepared <= 1)
+        {
+            recursion(
+                array[1], state[1-prepared],
+                state[1+m-prepared],
+                state[index-1], array[0]);
+        }
+        if (prepared <= n-m-1)
+        foreach (i; prepared.max(2)..n-m)
+        {
+            recursion(
+                array[i], state[i-prepared],
+                state[i-(prepared-m)],
+                array[i-2], array[i-1]);
+        }
+        foreach (i; prepared.max(n-m)..n)
+        {
+            recursion(
+                array[i], state[i-prepared],
+                array[i-(n-m)],
+                array[i-2], array[i-1]);
+        }
+        foreach (i; n .. size)
+        {
+            recursion(
+                array[i], array[i-n],
+                array[i-(n-m)],
+                array[i-2], array[i-1]);
+        }
+        // array[$-n+i] == state[i-n]
+        // array[$+i] == state[i]
         recursion(
-            array[0], state[0],
-            state[0 + m],
-            state[n - 2], state[n - 1]);
+            state[0], array[$-n],
+            array[$-(n-m)],
+            array[$-2], array[$-1]);
         recursion(
-            array[1], state[1],
-            state[1 + m],
-            state[n - 1], array[0]);
-
-        foreach (i; 2 .. n-m)
+            state[1], array[$+1-n],
+            array[$+1-(n-m)],
+            array[$-1], state[0]);
+        foreach (i; 2..(n-m))
         {
             recursion(
-                array[i], state[i],
-                state[i + m],
-                array[i - 2], array[i - 1]);
+                state[i], array[$+i-n],
+                array[$+i-(n-m)],
+                state[i-2], state[i-1]);
         }
-        foreach (i; n-m .. n)
+        foreach (i; (n-m)..n)
         {
             recursion(
-                array[i], state[i],
-                array[i + m - n],
-                array[i - 2], array[i - 1]);
-        }
-        foreach (i; n .. size-n)
-        {
-            recursion(
-                array[i], array[i - n],
-                array[i + m - n],
-                array[i - 2], array[i - 1]);
-        }
-        foreach (j; 0..ptrdiff_t(2*n-size).max(0))
-        {
-            state[j] = array[j + size - n];
-        }
-        size_t j = ptrdiff_t(2*n-size).max(0);
-        foreach (i; size-n..size)
-        {
-            recursion(
-                array[i], array[i - n],
-                array[i + m - n],
-                array[i - 2], array[i - 1]);
-            state[j] = array[i];
-            j += 1;
+                state[i], array[$+i-n],
+                state[i-(n-m)],
+                state[i-2], state[i-1]);
         }
         return array;
     }
@@ -286,21 +330,6 @@ mixin template SFMTMixin()
             }
         }
         assert (false, "unreachable?");
-    }
-    void dumpState()
-    {
-        debug
-        {
-            import std.stdio;
-            foreach (i, elem; state)
-            {
-                if (i % 2)
-                    stderr.write(" ");
-                stderr.writef("%(%016x-%)", elem.u64[]);
-                if (i % 2)
-                    stderr.writeln;
-            }
-        }
     }
 }
 struct RunTimeSFMT
@@ -362,6 +391,14 @@ struct RunTimeSFMT
         r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
         r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
     }
+    string id()
+    {
+        return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
+                mersenneExponent, m,
+                shifts[],
+                masks[]
+                );
+    }
 }
 unittest
 {
@@ -374,25 +411,87 @@ unittest
     rt.parity = ct.parity;
     rt.seed(13579u);
     foreach (i; 0..1000)
-        assert (ct.next!ulong == rt.next!ulong);
-    stderr.writeln("unittest passed!");
+        assert (ct.frontPop!ulong == rt.frontPop!ulong);
+    stderr.writeln("checked compile time and run time");
 }
 unittest
 {
     import std.random;
     static assert (isUniformRNG!SFMT19937);
     assert (SFMT19937(4321u).front == 16924766246869039260UL);
+}
+unittest
+{
     import std.algorithm : equal;
     import std.range : take;
-    pragma (msg, "check output of original and range interfaces.");
-    // currently, only normal case is tested: need to test the cases front and popFront are unequally called.
     assert (SFMT19937(4321u).next!(ulong[])(1000).equal(
             SFMT19937(4321u).take(1000)));
-    import std.traits : isIntegral;
-    auto sfmt = SFMT19937(4321u),
-        x = sfmt.uniform01!real,
-        y = sfmt.uniform01!double,
-        z = sfmt.uniform01!float;
+    stderr.writeln("checked next!ulong[] and range functionality");
+}
+
+unittest
+{
+    version (unittest){} else static assert (false);
+    import std.random;
+    auto sfmt = SFMT19937(4321u);
+    foreach (i; 0..1000)
+    {
+        assert (0 <= sfmt.uniform01!real);
+        assert (0 <= sfmt.uniform01!double);
+        assert (0 <= sfmt.uniform01!float);
+        assert (sfmt.uniform01!real < 1);
+        assert (sfmt.uniform01!double < 1);
+        assert (sfmt.uniform01!float < 1);
+    }
+    stderr.writeln("checked uniform01");
+    stderr.writeln(sfmt.countPopFront);
+
+    auto sixThousandth = sfmt.front;
+    sfmt = SFMT19937(4321u);
+    foreach (i; 0..6000)
+        sfmt.popFront;
+    stderr.writeln(sfmt.countPopFront);
+    assert (sfmt.front == sixThousandth);
+    stderr.writeln("checked call-only-popFront case");
+}
+unittest
+{
+    void testNext(U, ISFMT)(ISFMT sfmt)
+    {
+        auto copy = sfmt;
+        auto firstBlock = sfmt.next!(U[])(10000);
+        auto secondBlock = sfmt.next!(U[])(10000);
+        U s;
+        foreach (i, b; firstBlock)
+            assert (b == (s = copy.frontPop!U), "mismatch: first[%d] = %0*,8x != %0*,8x".format(i, U.sizeof>>1, b, U.sizeof>>1, s));
+        foreach (i, b; secondBlock)
+            assert (b == (s = copy.frontPop!U), "mismatch: second[%d;%d] = %0*,8x != %0*,8x".format(i, i+firstBlock.length, U.sizeof>>1, b, U.sizeof>>1, s));
+    }
+    testNext!ulong(SFMT19937(4321u));
+    testNext!ulong(SFMT19937([uint(5), 4, 3, 2, 1]));
+    testNext!uint(SFMT19937(1234u));
+    testNext!uint(SFMT19937([uint(0x1234), 0x5678, 0x9abc, 0xdef0]));
+    stderr.writeln("checked next!U and next!U[] (U = ulong, uint)");
+}
+unittest
+{
+    void testPopFrontThenBlock(size_t firstSize, size_t secondSize)
+    {
+        import std.range : drop, take;
+        import std.algorithm : equal;
+        auto sfmt = SFMT19937(4321u);
+        foreach (i; 0..firstSize*2)
+            sfmt.popFront;
+        auto a = sfmt.next!(ulong[])(secondSize*2);
+        auto b = SFMT19937(4321u).drop(firstSize*2).take(secondSize*2);
+        assert (a.equal(b));
+    }
+    foreach (i; 0..SFMT19937.n)
+        foreach (j; SFMT19937.n..SFMT19937.n*2)
+        {
+            testPopFrontThenBlock(i, j);
+        }
+    stderr.writeln("checked next!U[]");
 }
 
 version (BigEndian)
