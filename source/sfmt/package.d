@@ -19,18 +19,6 @@ static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
     }
     mixin ("alias SFMT%d = SFMT%d_0;".format(mexp, mexp));
 }
-static this ()
-{
-    static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
-    {
-        import std.range : iota;
-        import std.format : format;
-        static foreach (row; 32.iota)
-        {
-            rtSFMTs ~= RunTimeSFMT(mixin ("SFMT%d_%d".format(mexp, row)).params);
-        }
-    }
-}
 ///
 struct RunTimeSFMT
 {
@@ -118,6 +106,18 @@ RunTimeSFMT[] rtSFMTs;///
 unittest
 {
     assert (rtSFMTs.length == 192);
+}
+static this ()
+{
+    static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
+    {
+        import std.range : iota;
+        import std.format : format;
+        static foreach (row; 32.iota)
+        {
+            rtSFMTs ~= RunTimeSFMT(mixin ("SFMT%d_%d".format(mexp, row)).params);
+        }
+    }
 }
 
 ///
