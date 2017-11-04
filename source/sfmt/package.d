@@ -19,7 +19,9 @@ static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
     }
     mixin ("alias SFMT%d = SFMT%d_0;".format(mexp, mexp));
 }
-/// SFMT random number generator, whose parameters are set run time.
+/** SFMT random number generator, whose parameters are set run time.
+
+*/
 struct RunTimeSFMT
 {
     mixin SFMTMixin;
@@ -40,6 +42,18 @@ struct RunTimeSFMT
         parity = parameters.parity;
         import std.random : unpredictableSeed;
         seed(unpredictableSeed);
+    }
+    /// Set parameters and seed with specified seed.
+    this (in sfmt.internal.Parameters parameters, in uint seed)
+    {
+        this (parameters);
+        this.seed(seed);
+    }
+    /// ditto
+    this (in sfmt.internal.Parameters parameters, uint[] seed)
+    {
+        this (parameters);
+        this.seed(seed);
     }
     /// Mersenne exponent.
     size_t mexp() const@property
@@ -121,7 +135,7 @@ static this ()
     }
 }
 
-///
+/// SFMT random number generator, whose parameters are set compile time.
 struct SFMT(sfmt.internal.Parameters parameters)
 {
     private alias params = parameters;
@@ -157,10 +171,6 @@ struct SFMT(sfmt.internal.Parameters parameters)
                 shifts[],
                 masks[]
                 );///
-}
-///
-mixin template SFMTMixin()
-{
     ///
     this (uint seed)
     {
@@ -171,6 +181,91 @@ mixin template SFMTMixin()
     {
         this.seed(seed);
     }
+}
+///
+unittest
+{
+    /// SFMT is an alias of SFMT!(...).
+    import std.random;
+    static assert (isUniformRNG!SFMT19937);
+    assert (SFMT19937(4321u).front == 16924766246869039260UL);
+}
+///
+unittest
+{
+    import std.algorithm : equal;
+    import std.range : take;
+    assert (SFMT19937(4321u).next!(ulong[])(1000).equal(
+            SFMT19937(4321u).take(1000)));
+    stderr.writeln("checked next!ulong[] and range functionality");
+}
+///
+unittest
+{
+    import std.random;
+    auto sfmt = SFMT19937(4321u);
+    foreach (i; 0..1000)
+    {
+        assert (0 <= sfmt.uniform01!real);
+        assert (0 <= sfmt.uniform01!double);
+        assert (0 <= sfmt.uniform01!float);
+        assert (sfmt.uniform01!real < 1);
+        assert (sfmt.uniform01!double < 1);
+        assert (sfmt.uniform01!float < 1);
+    }
+    stderr.writeln("checked uniform01");
+
+    auto sixThousandth = sfmt.front;
+    sfmt = SFMT19937(4321u);
+    foreach (i; 0..6000)
+        sfmt.popFront;
+    assert (sfmt.front == sixThousandth);
+    stderr.writeln("checked call-only-popFront case");
+}
+///
+unittest
+{
+    void testNext(U, ISFMT)(ISFMT sfmt)
+    {
+        auto copy = sfmt;
+        auto firstBlock = sfmt.next!(U[])(10000);
+        auto secondBlock = sfmt.next!(U[])(10000);
+        U s;
+        foreach (i, b; firstBlock)
+            assert (b == (s = copy.frontPop!U), "mismatch: first[%d] = %0*,8x != %0*,8x".format(i, U.sizeof>>1, b, U.sizeof>>1, s));
+        foreach (i, b; secondBlock)
+            assert (b == (s = copy.frontPop!U), "mismatch: second[%d;%d] = %0*,8x != %0*,8x".format(i, i+firstBlock.length, U.sizeof>>1, b, U.sizeof>>1, s));
+    }
+    testNext!ulong(SFMT19937(4321u));
+    testNext!ulong(SFMT19937([uint(5), 4, 3, 2, 1]));
+    testNext!uint(SFMT19937(1234u));
+    testNext!uint(SFMT19937([uint(0x1234), 0x5678, 0x9abc, 0xdef0]));
+    stderr.writeln("checked frontPop!U and next!U[] (U = ulong, uint)");
+}
+///
+unittest
+{
+    void testPopFrontThenBlock(size_t firstSize, size_t secondSize)
+    {
+        import std.range : drop, take;
+        import std.algorithm : equal;
+        auto sfmt = SFMT19937(4321u);
+        foreach (i; 0..firstSize*2)
+            sfmt.popFront;
+        auto a = sfmt.next!(ulong[])(secondSize*2);
+        auto b = SFMT19937(4321u).drop(firstSize*2).take(secondSize*2);
+        assert (a.equal(b));
+    }
+    foreach (i; 0..SFMT19937.n)
+        foreach (j; SFMT19937.n..SFMT19937.n*2)
+        {
+            testPopFrontThenBlock(i, j);
+        }
+    stderr.writeln("checked next!U[]");
+}
+/// Common functions of RunTimeSFMT and SFMT.
+mixin template SFMTMixin()
+{
     void fillState(ubyte b)
     {
         ucent_ x;
@@ -415,6 +510,7 @@ mixin template SFMTMixin()
         assert (false, "unreachable?");
     }
 }
+///
 unittest
 {
     auto ct = SFMT19937(13579u);
@@ -428,82 +524,6 @@ unittest
     foreach (i; 0..1000)
         assert (ct.frontPop!ulong == rt.frontPop!ulong);
     stderr.writeln("checked compile time and run time");
-}
-unittest
-{
-    import std.random;
-    static assert (isUniformRNG!SFMT19937);
-    assert (SFMT19937(4321u).front == 16924766246869039260UL);
-}
-unittest
-{
-    import std.algorithm : equal;
-    import std.range : take;
-    assert (SFMT19937(4321u).next!(ulong[])(1000).equal(
-            SFMT19937(4321u).take(1000)));
-    stderr.writeln("checked next!ulong[] and range functionality");
-}
-
-unittest
-{
-    import std.random;
-    auto sfmt = SFMT19937(4321u);
-    foreach (i; 0..1000)
-    {
-        assert (0 <= sfmt.uniform01!real);
-        assert (0 <= sfmt.uniform01!double);
-        assert (0 <= sfmt.uniform01!float);
-        assert (sfmt.uniform01!real < 1);
-        assert (sfmt.uniform01!double < 1);
-        assert (sfmt.uniform01!float < 1);
-    }
-    stderr.writeln("checked uniform01");
-
-    auto sixThousandth = sfmt.front;
-    sfmt = SFMT19937(4321u);
-    foreach (i; 0..6000)
-        sfmt.popFront;
-    assert (sfmt.front == sixThousandth);
-    stderr.writeln("checked call-only-popFront case");
-}
-unittest
-{
-    void testNext(U, ISFMT)(ISFMT sfmt)
-    {
-        auto copy = sfmt;
-        auto firstBlock = sfmt.next!(U[])(10000);
-        auto secondBlock = sfmt.next!(U[])(10000);
-        U s;
-        foreach (i, b; firstBlock)
-            assert (b == (s = copy.frontPop!U), "mismatch: first[%d] = %0*,8x != %0*,8x".format(i, U.sizeof>>1, b, U.sizeof>>1, s));
-        foreach (i, b; secondBlock)
-            assert (b == (s = copy.frontPop!U), "mismatch: second[%d;%d] = %0*,8x != %0*,8x".format(i, i+firstBlock.length, U.sizeof>>1, b, U.sizeof>>1, s));
-    }
-    testNext!ulong(SFMT19937(4321u));
-    testNext!ulong(SFMT19937([uint(5), 4, 3, 2, 1]));
-    testNext!uint(SFMT19937(1234u));
-    testNext!uint(SFMT19937([uint(0x1234), 0x5678, 0x9abc, 0xdef0]));
-    stderr.writeln("checked next!U and next!U[] (U = ulong, uint)");
-}
-unittest
-{
-    void testPopFrontThenBlock(size_t firstSize, size_t secondSize)
-    {
-        import std.range : drop, take;
-        import std.algorithm : equal;
-        auto sfmt = SFMT19937(4321u);
-        foreach (i; 0..firstSize*2)
-            sfmt.popFront;
-        auto a = sfmt.next!(ulong[])(secondSize*2);
-        auto b = SFMT19937(4321u).drop(firstSize*2).take(secondSize*2);
-        assert (a.equal(b));
-    }
-    foreach (i; 0..SFMT19937.n)
-        foreach (j; SFMT19937.n..SFMT19937.n*2)
-        {
-            testPopFrontThenBlock(i, j);
-        }
-    stderr.writeln("checked next!U[]");
 }
 
 version (BigEndian)

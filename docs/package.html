@@ -500,6 +500,7 @@
   <div class="ddoc_summary">
   <p class="para">
     SFMT random number generator, whose parameters are set run time.
+
   </p>
 </div>
 
@@ -555,6 +556,40 @@
   <div class="ddoc_summary">
   <p class="para">
     Set <code class="code">parameters</code> and seed with <code class="code">std.random.unpredictableSeed</code>.
+  </p>
+</div>
+
+</section>
+
+</div>
+
+</li><li class="ddoc_member">
+  <div class="ddoc_member_header">
+  <div class="ddoc_header_anchor">
+  <a href="#RunTimeSFMT.this" id="RunTimeSFMT.this"><code class="code">this</code></a>
+</div>
+</div><div class="ddoc_decl">
+  <section class="section">
+    <div class="declaration">
+      <h4>Declaration</h4>
+      <div class="dlang">
+        <p class="para">
+          <code class="code">
+            <span class="ddoc_anchor" id="RunTimeSFMT.this.2"></span>this(in sfmt.internal.Parameters <code class="code">parameters</code>, in uint <code class="code">seed</code>);
+<br>
+this(in sfmt.internal.Parameters <code class="code">parameters</code>, uint[] <code class="code">seed</code>);
+
+          </code>
+        </p>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="ddoc_decl">
+  <section class="section ddoc_sections">
+  <div class="ddoc_summary">
+  <p class="para">
+    Set <code class="code">parameters</code> and <code class="code">seed</code> with specified <code class="code">seed</code>.
   </p>
 </div>
 
@@ -734,7 +769,150 @@
   </section>
 </div>
 <div class="ddoc_decl">
-  
+  <section class="section ddoc_sections">
+  <div class="ddoc_summary">
+  <p class="para">
+    <code class="code">SFMT</code> random number generator, whose parameters are set compile time.
+  </p>
+</div>
+<div class="ddoc_examples">
+  <h4>Examples</h4>
+  <p class="para">
+    
+<section class="code_listing">
+  <div class="code_sample">
+    <div class="dlang">
+      <ol class="code_lines">
+        <li><code class="code"><span class="comment">/// SFMT is an alias of SFMT!(...).
+</span><span class="keyword">import</span> std.random;
+<span class="keyword">static</span> <span class="keyword">assert</span> (isUniformRNG!SFMT19937);
+<span class="keyword">assert</span> (SFMT19937(4321u).front == 16924766246869039260UL);
+</code></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+  </p>
+</div><div class="ddoc_examples">
+  <h4>Examples</h4>
+  <p class="para">
+    
+<section class="code_listing">
+  <div class="code_sample">
+    <div class="dlang">
+      <ol class="code_lines">
+        <li><code class="code"><span class="keyword">import</span> std.algorithm : equal;
+<span class="keyword">import</span> std.range : take;
+<span class="keyword">assert</span> (SFMT19937(4321u).next!(<span class="keyword">ulong</span>[])(1000).equal(
+        SFMT19937(4321u).take(1000)));
+stderr.writeln(<span class="string_literal">"checked next!ulong[] and range functionality"</span>);
+</code></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+  </p>
+</div><div class="ddoc_examples">
+  <h4>Examples</h4>
+  <p class="para">
+    
+<section class="code_listing">
+  <div class="code_sample">
+    <div class="dlang">
+      <ol class="code_lines">
+        <li><code class="code"><span class="keyword">import</span> std.random;
+<span class="keyword">auto</span> sfmt = SFMT19937(4321u);
+<span class="keyword">foreach</span> (i; 0..1000)
+{
+    <span class="keyword">assert</span> (0 &lt;= sfmt.uniform01!<span class="keyword">real</span>);
+    <span class="keyword">assert</span> (0 &lt;= sfmt.uniform01!<span class="keyword">double</span>);
+    <span class="keyword">assert</span> (0 &lt;= sfmt.uniform01!<span class="keyword">float</span>);
+    <span class="keyword">assert</span> (sfmt.uniform01!<span class="keyword">real</span> &lt; 1);
+    <span class="keyword">assert</span> (sfmt.uniform01!<span class="keyword">double</span> &lt; 1);
+    <span class="keyword">assert</span> (sfmt.uniform01!<span class="keyword">float</span> &lt; 1);
+}
+stderr.writeln(<span class="string_literal">"checked uniform01"</span>);
+
+<span class="keyword">auto</span> sixThousandth = sfmt.front;
+sfmt = SFMT19937(4321u);
+<span class="keyword">foreach</span> (i; 0..6000)
+    sfmt.popFront;
+<span class="keyword">assert</span> (sfmt.front == sixThousandth);
+stderr.writeln(<span class="string_literal">"checked call-only-popFront case"</span>);
+</code></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+  </p>
+</div><div class="ddoc_examples">
+  <h4>Examples</h4>
+  <p class="para">
+    
+<section class="code_listing">
+  <div class="code_sample">
+    <div class="dlang">
+      <ol class="code_lines">
+        <li><code class="code"><span class="keyword">void</span> testNext(U, ISFMT)(ISFMT sfmt)
+{
+    <span class="keyword">auto</span> copy = sfmt;
+    <span class="keyword">auto</span> firstBlock = sfmt.next!(U[])(10000);
+    <span class="keyword">auto</span> secondBlock = sfmt.next!(U[])(10000);
+    U s;
+    <span class="keyword">foreach</span> (i, b; firstBlock)
+        <span class="keyword">assert</span> (b == (s = copy.frontPop!U), <span class="string_literal">"mismatch: first[%d] = %0*,8x != %0*,8x"</span>.format(i, U.sizeof&gt;&gt;1, b, U.sizeof&gt;&gt;1, s));
+    <span class="keyword">foreach</span> (i, b; secondBlock)
+        <span class="keyword">assert</span> (b == (s = copy.frontPop!U), <span class="string_literal">"mismatch: second[%d;%d] = %0*,8x != %0*,8x"</span>.format(i, i+firstBlock.length, U.sizeof&gt;&gt;1, b, U.sizeof&gt;&gt;1, s));
+}
+testNext!<span class="keyword">ulong</span>(SFMT19937(4321u));
+testNext!<span class="keyword">ulong</span>(SFMT19937([<span class="keyword">uint</span>(5), 4, 3, 2, 1]));
+testNext!<span class="keyword">uint</span>(SFMT19937(1234u));
+testNext!<span class="keyword">uint</span>(SFMT19937([<span class="keyword">uint</span>(0x1234), 0x5678, 0x9abc, 0xdef0]));
+stderr.writeln(<span class="string_literal">"checked frontPop!U and next!U[] (U = ulong, uint)"</span>);
+</code></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+  </p>
+</div><div class="ddoc_examples">
+  <h4>Examples</h4>
+  <p class="para">
+    
+<section class="code_listing">
+  <div class="code_sample">
+    <div class="dlang">
+      <ol class="code_lines">
+        <li><code class="code"><span class="keyword">void</span> testPopFrontThenBlock(size_t firstSize, size_t secondSize)
+{
+    <span class="keyword">import</span> std.range : drop, take;
+    <span class="keyword">import</span> std.algorithm : equal;
+    <span class="keyword">auto</span> sfmt = SFMT19937(4321u);
+    <span class="keyword">foreach</span> (i; 0..firstSize*2)
+        sfmt.popFront;
+    <span class="keyword">auto</span> a = sfmt.next!(<span class="keyword">ulong</span>[])(secondSize*2);
+    <span class="keyword">auto</span> b = SFMT19937(4321u).drop(firstSize*2).take(secondSize*2);
+    <span class="keyword">assert</span> (a.equal(b));
+}
+<span class="keyword">foreach</span> (i; 0..SFMT19937.n)
+    <span class="keyword">foreach</span> (j; SFMT19937.n..SFMT19937.n*2)
+    {
+        testPopFrontThenBlock(i, j);
+    }
+stderr.writeln(<span class="string_literal">"checked next!U[]"</span>);
+</code></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+  </p>
+</div>
+</section>
 <ul class="ddoc_members">
   <li class="ddoc_member">
   <div class="ddoc_member_header">
@@ -1061,6 +1239,56 @@
 
 </div>
 
+</li><li class="ddoc_member">
+  <div class="ddoc_member_header">
+  <div class="ddoc_header_anchor">
+  <a href="#SFMT.this" id="SFMT.this"><code class="code">this</code></a>
+</div>
+</div><div class="ddoc_decl">
+  <section class="section">
+    <div class="declaration">
+      <h4>Declaration</h4>
+      <div class="dlang">
+        <p class="para">
+          <code class="code">
+            <span class="ddoc_anchor" id="SFMT.this"></span>this(uint <code class="code">seed</code>);
+
+          </code>
+        </p>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="ddoc_decl">
+  
+
+</div>
+
+</li><li class="ddoc_member">
+  <div class="ddoc_member_header">
+  <div class="ddoc_header_anchor">
+  <a href="#SFMT.this" id="SFMT.this"><code class="code">this</code></a>
+</div>
+</div><div class="ddoc_decl">
+  <section class="section">
+    <div class="declaration">
+      <h4>Declaration</h4>
+      <div class="dlang">
+        <p class="para">
+          <code class="code">
+            <span class="ddoc_anchor" id="SFMT.this.2"></span>this(uint[] <code class="code">seed</code>);
+
+          </code>
+        </p>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="ddoc_decl">
+  
+
+</div>
+
 </li>
 </ul>
 
@@ -1086,59 +1314,42 @@
   </section>
 </div>
 <div class="ddoc_decl">
-  
+  <section class="section ddoc_sections">
+  <div class="ddoc_summary">
+  <p class="para">
+    Common functions of RunTimeSFMT and SFMT.
+  </p>
+</div>
+<div class="ddoc_examples">
+  <h4>Examples</h4>
+  <p class="para">
+    
+<section class="code_listing">
+  <div class="code_sample">
+    <div class="dlang">
+      <ol class="code_lines">
+        <li><code class="code"><span class="keyword">auto</span> ct = SFMT19937(13579u);
+RunTimeSFMT rt;
+rt.mexp(ct.mersenneExponent);
+rt.m = ct.m;
+rt.shifts = ct.shifts;
+rt.masks = ct.masks;
+rt.parity = ct.parity;
+rt.seed(13579u);
+<span class="keyword">foreach</span> (i; 0..1000)
+    <span class="keyword">assert</span> (ct.frontPop!<span class="keyword">ulong</span> == rt.frontPop!<span class="keyword">ulong</span>);
+stderr.writeln(<span class="string_literal">"checked compile time and run time"</span>);
+</code></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+  </p>
+</div>
+</section>
 <ul class="ddoc_members">
   <li class="ddoc_member">
-  <div class="ddoc_member_header">
-  <div class="ddoc_header_anchor">
-  <a href="#SFMTMixin.this" id="SFMTMixin.this"><code class="code">this</code></a>
-</div>
-</div><div class="ddoc_decl">
-  <section class="section">
-    <div class="declaration">
-      <h4>Declaration</h4>
-      <div class="dlang">
-        <p class="para">
-          <code class="code">
-            <span class="ddoc_anchor" id="SFMTMixin.this"></span>this(uint <code class="code">seed</code>);
-
-          </code>
-        </p>
-      </div>
-    </div>
-  </section>
-</div>
-<div class="ddoc_decl">
-  
-
-</div>
-
-</li><li class="ddoc_member">
-  <div class="ddoc_member_header">
-  <div class="ddoc_header_anchor">
-  <a href="#SFMTMixin.this" id="SFMTMixin.this"><code class="code">this</code></a>
-</div>
-</div><div class="ddoc_decl">
-  <section class="section">
-    <div class="declaration">
-      <h4>Declaration</h4>
-      <div class="dlang">
-        <p class="para">
-          <code class="code">
-            <span class="ddoc_anchor" id="SFMTMixin.this.2"></span>this(uint[] <code class="code">seed</code>);
-
-          </code>
-        </p>
-      </div>
-    </div>
-  </section>
-</div>
-<div class="ddoc_decl">
-  
-
-</div>
-
-</li><li class="ddoc_member">
   <div class="ddoc_member_header">
   <div class="ddoc_header_anchor">
   <a href="#SFMTMixin.seed" id="SFMTMixin.seed"><code class="code">seed</code></a>
