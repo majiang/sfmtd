@@ -147,23 +147,20 @@ static this ()
 /// _SFMT random number generator, whose parameters are set compile time.
 struct SFMT(sfmt.internal.Parameters parameters)
 {
-    private alias params = parameters;
+    ///
+    this (uint seed)
+    {
+        this.seed(seed);
+    }
+    ///
+    this (uint[] seed)
+    {
+        this.seed(seed);
+    }
     enum mersenneExponent = parameters.mersenneExponent;///
     alias mexp = mersenneExponent;///
     enum n = (mersenneExponent >> 7) + 1;///
     enum size = n << 2;///
-    static if (size >= 623)
-        private enum lag = 11;
-    else static if (size >= 68)
-        private enum lag = 7;
-    else static if (size >= 39)
-        private enum lag = 5;
-    else
-        private enum lag = 3;
-    private enum mid = (size - lag) / 2;
-    private enum tail = idxof!(size - 1);
-    private enum imid = idxof!mid;
-    private enum iml = idxof!(mid+lag);
     enum m = parameters.m;///
     enum shifts = parameters.shifts;///
     enum masks = parameters.masks;///
@@ -176,16 +173,21 @@ struct SFMT(sfmt.internal.Parameters parameters)
                 shifts[],
                 masks[]
                 );///
-    ///
-    this (uint seed)
-    {
-        this.seed(seed);
-    }
-    ///
-    this (uint[] seed)
-    {
-        this.seed(seed);
-    }
+
+private:
+    alias params = parameters;
+    static if (size >= 623)
+        enum lag = 11;
+    else static if (size >= 68)
+        enum lag = 7;
+    else static if (size >= 39)
+        enum lag = 5;
+    else
+        enum lag = 3;
+    enum mid = (size - lag) / 2;
+    enum tail = idxof!(size - 1);
+    enum imid = idxof!mid;
+    enum iml = idxof!(mid+lag);
 }
 ///
 unittest
