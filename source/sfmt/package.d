@@ -24,18 +24,6 @@ static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
 */
 struct RunTimeSFMT
 {
-    /** Set parameters.
-
-    The internal state after is undefined after the call: call `seed$(LPAREN)$(RPAREN)`.
-    */
-    void setParameters(in sfmt.internal.Parameters parameters)
-    {
-        mexp(parameters.mersenneExponent);
-        m = parameters.m;
-        shifts = parameters.shifts;
-        masks = parameters.masks;
-        parity = parameters.parity;
-    }
     /// Set parameters and seed with `std.random.unpredictableSeed`.
     this (in sfmt.internal.Parameters parameters)
     {
@@ -54,6 +42,18 @@ struct RunTimeSFMT
     {
         setParameters(parameters);
         this.seed(seed);
+    }
+    /** Set parameters.
+
+    The internal state after is undefined after the call: call `seed$(LPAREN)$(RPAREN)`.
+    */
+    void setParameters(in sfmt.internal.Parameters parameters)
+    {
+        mexp(parameters.mersenneExponent);
+        m = parameters.m;
+        shifts = parameters.shifts;
+        masks = parameters.masks;
+        parity = parameters.parity;
     }
     /// Mersenne exponent.
     size_t mexp() const @property
