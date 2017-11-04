@@ -47,26 +47,27 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum min = ulong.min;///
     enum max = ulong.max;///
     enum mersenneExponent = parameters.mersenneExponent;///
+    alias mexp = mersenneExponent;///
     enum n = (mersenneExponent >> 7) + 1;///
     enum size = n << 2;///
     static if (size >= 623)
-        enum lag = 11;
+        private enum lag = 11;
     else static if (size >= 68)
-        enum lag = 7;
+        private enum lag = 7;
     else static if (size >= 39)
-        enum lag = 5;
+        private enum lag = 5;
     else
-        enum lag = 3;
-    enum mid = (size - lag) / 2;
-    enum tail = idxof!(size - 1);
-    enum imid = idxof!mid;
-    enum iml = idxof!(mid+lag);
+        private enum lag = 3;
+    private enum mid = (size - lag) / 2;
+    private enum tail = idxof!(size - 1);
+    private enum imid = idxof!mid;
+    private enum iml = idxof!(mid+lag);
     enum m = parameters.m;///
     enum shifts = parameters.shifts;///
     enum masks = parameters.masks;///
     enum parity = parameters.parity;///
     alias recursion = sfmt.internal.recursion!(shifts, masks);
-    ucent_[n] state;
+    private ucent_[n] state;
     mixin SFMTMixin;
     enum id = "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
                 mersenneExponent, m,
@@ -335,14 +336,15 @@ mixin template SFMTMixin()
 struct RunTimeSFMT
 {
     mixin SFMTMixin;
-    size_t mersenneExponent;///
-    ptrdiff_t n/***/, size/***/, lag, mid;
-    size_t tail, imid, iml;
+    private size_t mersenneExponent;
+    ptrdiff_t n/**READONLY*/, size/**READONLY*/;
+    private ptrdiff_t lag, mid;
+    private size_t tail, imid, iml;
     size_t m;///
     size_t[4] shifts/***/, masks/***/, parity/***/;
-    ucent_[] state;
-    ///
-    this (sfmt.internal.Parameters parameters)
+    private ucent_[] state;
+    /// Set parameters and seed with `std.random.unpredictableSeed`.
+    this (in sfmt.internal.Parameters parameters)
     {
         mexp(parameters.mersenneExponent);
         m = parameters.m;
@@ -352,8 +354,13 @@ struct RunTimeSFMT
         import std.random : unpredictableSeed;
         seed(unpredictableSeed);
     }
-    ///
-    size_t mexp(size_t value) @property
+    /// Mersenne exponent.
+    size_t mexp() const@property
+    {
+        return mersenneExponent;
+    }
+    /// ditto
+    size_t mexp(in size_t value) @property
     {
         mersenneExponent = value;
         n = (value >> 7) + 1;
@@ -373,6 +380,10 @@ struct RunTimeSFMT
         iml = (mid+lag).idxof;
         return value;
     }
+    /** RunTime recursion function.
+
+    SeeAlso: `sfmt.internal.recursion`.
+    */
     void recursion(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
     {
         immutable

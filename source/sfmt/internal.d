@@ -16,9 +16,9 @@ int idxof(int i)
 /// 128-bit integer.
 union ucent_
 {
-    ulong[2] u64;
-    uint[4] u32;
-    // checked
+    ulong[2] u64;///
+    uint[4] u32;///
+    /// _shift 8<var>n</var> bit.
     ucent_ opBinary(string op)(int shift)
         if (op == "<<" || op == ">>")
     {
@@ -41,9 +41,9 @@ union ucent_
     }
 }
 
-/** Recursion function.
+/** Parametrized recursion function.
 
-The index below is modulo <var>n</var> for generateAll$(LPAREN)$(RPAREN).
+The index below is modulo <var>n</var> for `generateAll$(LPAREN)$(RPAREN)`.
 
 Params:
     r = state[<var>i</var>]
