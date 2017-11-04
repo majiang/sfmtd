@@ -185,7 +185,7 @@ struct SFMT(sfmt.internal.Parameters parameters)
 ///
 unittest
 {
-    /// SFMT is an alias of SFMT!(...).
+    /// SFMT19937 is an alias of SFMT!(...).
     import std.random;
     static assert (isUniformRNG!SFMT19937);
     assert (SFMT19937(4321u).front == 16924766246869039260UL);
