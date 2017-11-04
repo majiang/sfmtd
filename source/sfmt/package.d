@@ -19,7 +19,7 @@ static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
     }
     mixin ("alias SFMT%d = SFMT%d_0;".format(mexp, mexp));
 }
-///
+/// SFMT random number generator, whose parameters are set run time.
 struct RunTimeSFMT
 {
     mixin SFMTMixin;
@@ -101,7 +101,8 @@ struct RunTimeSFMT
                 );
     }
 }
-RunTimeSFMT[] rtSFMTs;///
+/// RunTimeSFMT generators with predefined variation of parameters.
+RunTimeSFMT[] rtSFMTs;
 ///
 unittest
 {
