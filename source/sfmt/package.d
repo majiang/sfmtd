@@ -165,15 +165,16 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum shifts = parameters.shifts;///
     enum masks = parameters.masks;///
     enum parity = parameters.parity;///
-    alias recursion = sfmt.internal.recursion!(shifts, masks);
-    mixin SFMTMixin;
     enum id = "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
                 mersenneExponent, m,
                 shifts[],
                 masks[]
                 );///
 
+    mixin SFMTMixin;
+
 private:
+    alias recursion = sfmt.internal.recursion!(shifts, masks);
     alias params = parameters;
     static if (size >= 623)
         enum lag = 11;
