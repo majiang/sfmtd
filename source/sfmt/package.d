@@ -45,7 +45,7 @@ struct RunTimeSFMT
     }
     /** Set parameters.
 
-    The internal state after is undefined after the call: call `seed$(LPAREN)$(RPAREN)`.
+    The internal state is undefined after the call: call `seed$(LPAREN)$(RPAREN)`.
     */
     void setParameters(in sfmt.internal.Parameters parameters)
     {
