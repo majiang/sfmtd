@@ -166,7 +166,6 @@ struct SFMT(sfmt.internal.Parameters parameters)
     enum masks = parameters.masks;///
     enum parity = parameters.parity;///
     alias recursion = sfmt.internal.recursion!(shifts, masks);
-    private ucent_[n] state;
     mixin SFMTMixin;
     enum id = "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
                 mersenneExponent, m,
@@ -188,6 +187,7 @@ private:
     enum tail = idxof!(size - 1);
     enum imid = idxof!mid;
     enum iml = idxof!(mid+lag);
+    ucent_[n] state;
 }
 ///
 unittest
