@@ -124,7 +124,7 @@ private:
     size_t tail, imid, iml;
     ucent_[] state;
 }
-/// RunTimeSFMT generators with predefined variation of parameters.
+/// `RunTimeSFMT` generators with predefined variation of parameters.
 RunTimeSFMT[] rtSFMTs;
 ///
 unittest
@@ -144,14 +144,10 @@ static this ()
     }
 }
 
-/// SFMT random number generator, whose parameters are set compile time.
+/// _SFMT random number generator, whose parameters are set compile time.
 struct SFMT(sfmt.internal.Parameters parameters)
 {
     private alias params = parameters;
-    enum isUniformRandom = true;///
-    enum empty = false;///
-    enum min = ulong.min;///
-    enum max = ulong.max;///
     enum mersenneExponent = parameters.mersenneExponent;///
     alias mexp = mersenneExponent;///
     enum n = (mersenneExponent >> 7) + 1;///
@@ -275,6 +271,9 @@ unittest
 /// Common functions of RunTimeSFMT and SFMT.
 mixin template SFMTMixin()
 {
+    enum isUniformRandom = true;///
+    enum min = ulong.min;///
+    enum max = ulong.max;///
     void fillState(ubyte b)
     {
         ucent_ x;
@@ -349,6 +348,8 @@ mixin template SFMTMixin()
         generateAll;
     }
     /// input range interface.
+    enum empty = false;
+    /// ditto
     ulong front() @property
     {
         assert (idx % 2 == 0, "out of alignment");
