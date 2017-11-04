@@ -31,6 +31,88 @@ static this ()
         }
     }
 }
+///
+struct RunTimeSFMT
+{
+    mixin SFMTMixin;
+    private size_t mersenneExponent;
+    ptrdiff_t n/**READONLY*/, size/**READONLY*/;
+    private ptrdiff_t lag, mid;
+    private size_t tail, imid, iml;
+    size_t m;///
+    size_t[4] shifts/***/, masks/***/, parity/***/;
+    private ucent_[] state;
+    /// Set parameters and seed with `std.random.unpredictableSeed`.
+    this (in sfmt.internal.Parameters parameters)
+    {
+        mexp(parameters.mersenneExponent);
+        m = parameters.m;
+        shifts = parameters.shifts;
+        masks = parameters.masks;
+        parity = parameters.parity;
+        import std.random : unpredictableSeed;
+        seed(unpredictableSeed);
+    }
+    /// Mersenne exponent.
+    size_t mexp() const@property
+    {
+        return mersenneExponent;
+    }
+    /// ditto
+    size_t mexp(in size_t value) @property
+    {
+        mersenneExponent = value;
+        n = (value >> 7) + 1;
+        state.length = n;
+        size = n << 2;
+        if (size >= 623)
+            lag = 11;
+        else if (size >= 68)
+            lag = 7;
+        else if (size >= 39)
+            lag = 5;
+        else
+            lag = 3;
+        mid = (size - lag) / 2;
+        tail = (size - 1).idxof;
+        imid = mid.idxof;
+        iml = (mid+lag).idxof;
+        return value;
+    }
+    /** RunTime recursion function.
+
+    SeeAlso: `sfmt.internal.recursion`.
+    */
+    void recursion(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
+    {
+        immutable
+            sl1 = shifts[0],
+            sl2 = shifts[1],
+            sr1 = shifts[2],
+            sr2 = shifts[3];
+        immutable
+            m0 = masks[idxof!0],
+            m1 = masks[idxof!1],
+            m2 = masks[idxof!2],
+            m3 = masks[idxof!3];
+        auto
+            x = a << sl2,
+            y = c >> sr2;
+        r.u32[0] = a.u32[0] ^ x.u32[0] ^ ((b.u32[0] >> sr1) & m0) ^ y.u32[0] ^ (d.u32[0] << sl1);
+        r.u32[1] = a.u32[1] ^ x.u32[1] ^ ((b.u32[1] >> sr1) & m1) ^ y.u32[1] ^ (d.u32[1] << sl1);
+        r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
+        r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
+    }
+    ///
+    string id()
+    {
+        return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
+                mersenneExponent, m,
+                shifts[],
+                masks[]
+                );
+    }
+}
 RunTimeSFMT[] rtSFMTs;///
 ///
 unittest
@@ -330,88 +412,6 @@ mixin template SFMTMixin()
             }
         }
         assert (false, "unreachable?");
-    }
-}
-///
-struct RunTimeSFMT
-{
-    mixin SFMTMixin;
-    private size_t mersenneExponent;
-    ptrdiff_t n/**READONLY*/, size/**READONLY*/;
-    private ptrdiff_t lag, mid;
-    private size_t tail, imid, iml;
-    size_t m;///
-    size_t[4] shifts/***/, masks/***/, parity/***/;
-    private ucent_[] state;
-    /// Set parameters and seed with `std.random.unpredictableSeed`.
-    this (in sfmt.internal.Parameters parameters)
-    {
-        mexp(parameters.mersenneExponent);
-        m = parameters.m;
-        shifts = parameters.shifts;
-        masks = parameters.masks;
-        parity = parameters.parity;
-        import std.random : unpredictableSeed;
-        seed(unpredictableSeed);
-    }
-    /// Mersenne exponent.
-    size_t mexp() const@property
-    {
-        return mersenneExponent;
-    }
-    /// ditto
-    size_t mexp(in size_t value) @property
-    {
-        mersenneExponent = value;
-        n = (value >> 7) + 1;
-        state.length = n;
-        size = n << 2;
-        if (size >= 623)
-            lag = 11;
-        else if (size >= 68)
-            lag = 7;
-        else if (size >= 39)
-            lag = 5;
-        else
-            lag = 3;
-        mid = (size - lag) / 2;
-        tail = (size - 1).idxof;
-        imid = mid.idxof;
-        iml = (mid+lag).idxof;
-        return value;
-    }
-    /** RunTime recursion function.
-
-    SeeAlso: `sfmt.internal.recursion`.
-    */
-    void recursion(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
-    {
-        immutable
-            sl1 = shifts[0],
-            sl2 = shifts[1],
-            sr1 = shifts[2],
-            sr2 = shifts[3];
-        immutable
-            m0 = masks[idxof!0],
-            m1 = masks[idxof!1],
-            m2 = masks[idxof!2],
-            m3 = masks[idxof!3];
-        auto
-            x = a << sl2,
-            y = c >> sr2;
-        r.u32[0] = a.u32[0] ^ x.u32[0] ^ ((b.u32[0] >> sr1) & m0) ^ y.u32[0] ^ (d.u32[0] << sl1);
-        r.u32[1] = a.u32[1] ^ x.u32[1] ^ ((b.u32[1] >> sr1) & m1) ^ y.u32[1] ^ (d.u32[1] << sl1);
-        r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
-        r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
-    }
-    ///
-    string id()
-    {
-        return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
-                mersenneExponent, m,
-                shifts[],
-                masks[]
-                );
     }
 }
 unittest
