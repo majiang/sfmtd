@@ -1,3 +1,4 @@
+/// Main API of SIMD-oriented Fast Mersenne Twister (SFMT).
 module sfmt;
 
 version (unittest)
@@ -210,16 +211,9 @@ mixin template SFMTMixin()
         immutable size_t
             prepared = n-index;
         array[0..prepared] = state[index..$];
-        scope (failure)
-        {
-            import std.stdio;
-            stderr.writefln("index:%d, size:%d, prepared:%d, n-m:%d, n:%d",
-                index, size, prepared, n-m, n);
-        }
         // array[prepared-j] == state[n-j]
         // array[i-n] == state[i-prepared]
         // array[i] == state[i+n-prepared] == state[i+index]
-        immutable size_t[] bounds = [0, 1, n-m, n];
         if (prepared <= 0)
         {
             recursion(
@@ -440,7 +434,6 @@ unittest
 
 unittest
 {
-    version (unittest){} else static assert (false);
     import std.random;
     auto sfmt = SFMT19937(4321u);
     foreach (i; 0..1000)
