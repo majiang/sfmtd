@@ -24,39 +24,39 @@ static foreach (mexp; [size_t(607), 1279, 2281, 4253, 11213, 19937])
 */
 struct RunTimeSFMT
 {
-    mixin SFMTMixin;
-    private size_t mersenneExponent;
-    ptrdiff_t n/**READONLY*/, size/**READONLY*/;
-    private ptrdiff_t lag, mid;
-    private size_t tail, imid, iml;
-    size_t m;///
-    size_t[4] shifts/***/, masks/***/, parity/***/;
-    private ucent_[] state;
-    /// Set parameters and seed with `std.random.unpredictableSeed`.
-    this (in sfmt.internal.Parameters parameters)
+    /** Set parameters.
+
+    The internal state after is undefined after the call: call `seed$(LPAREN)$(RPAREN)`.
+    */
+    void setParameters(in sfmt.internal.Parameters parameters)
     {
         mexp(parameters.mersenneExponent);
         m = parameters.m;
         shifts = parameters.shifts;
         masks = parameters.masks;
         parity = parameters.parity;
+    }
+    /// Set parameters and seed with `std.random.unpredictableSeed`.
+    this (in sfmt.internal.Parameters parameters)
+    {
+        setParameters(parameters);
         import std.random : unpredictableSeed;
         seed(unpredictableSeed);
     }
-    /// Set parameters and seed with specified seed.
+    /// Set parameters and _seed with specified seed.
     this (in sfmt.internal.Parameters parameters, in uint seed)
     {
-        this (parameters);
+        setParameters(parameters);
         this.seed(seed);
     }
     /// ditto
     this (in sfmt.internal.Parameters parameters, uint[] seed)
     {
-        this (parameters);
+        setParameters(parameters);
         this.seed(seed);
     }
     /// Mersenne exponent.
-    size_t mexp() const@property
+    size_t mexp() const @property
     {
         return mersenneExponent;
     }
@@ -81,10 +81,24 @@ struct RunTimeSFMT
         iml = (mid+lag).idxof;
         return value;
     }
-    /** RunTime recursion function.
+    ptrdiff_t n/**READONLY*/, size/**READONLY*/;
+    size_t m;///
+    size_t[4] shifts/***/, masks/***/, parity/***/;
 
-    SeeAlso: `sfmt.internal.recursion`.
-    */
+    ///
+    string id() const
+    {
+        return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
+                mersenneExponent, m,
+                shifts[],
+                masks[]
+                );
+    }
+
+    mixin SFMTMixin;
+
+private:
+    // see also sfmt.internal.recursion
     void recursion(ref ucent_ r, ref ucent_ a, ref ucent_ b, ref ucent_ c, ref ucent_ d)
     {
         immutable
@@ -105,15 +119,10 @@ struct RunTimeSFMT
         r.u32[2] = a.u32[2] ^ x.u32[2] ^ ((b.u32[2] >> sr1) & m2) ^ y.u32[2] ^ (d.u32[2] << sl1);
         r.u32[3] = a.u32[3] ^ x.u32[3] ^ ((b.u32[3] >> sr1) & m3) ^ y.u32[3] ^ (d.u32[3] << sl1);
     }
-    ///
-    string id()
-    {
-        return "SFMT-%d:%d-%(%d-%):%(%08x-%)".format(
-                mersenneExponent, m,
-                shifts[],
-                masks[]
-                );
-    }
+    size_t mersenneExponent;
+    ptrdiff_t lag, mid;
+    size_t tail, imid, iml;
+    ucent_[] state;
 }
 /// RunTimeSFMT generators with predefined variation of parameters.
 RunTimeSFMT[] rtSFMTs;
